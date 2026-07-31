@@ -1,0 +1,8 @@
+{
+  "name": "Remix NexSpace",
+  "description": "An instant, build-free coding environment to develop and run your projects directly in the cloud.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

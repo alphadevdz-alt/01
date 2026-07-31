@@ -1,0 +1,270 @@
+// SPEX Platform — Production Database Schema (PostgreSQL)
+// قاعدة البيانات الإنتاجية الحقيقية للمنصة
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------
+// المستخدمون — النموذج الوحيد الذي يحتاج أعمدة صارمة لأنه يحمل بيانات المصادقة
+// -----------------------------------------------------------------------
+model User {
+  id                String   @id
+  username          String   @unique
+  spexId            String   @unique
+  firstName         String
+  lastName          String
+  email             String   @unique
+  // كلمة المرور لا تُخزَّن أبداً كنص عادي — فقط الهاش (bcrypt)
+  passwordHash      String
+  // معرّف حساب Google المرتبط (Google "sub") — اختياري، يُستخدم لتسجيل الدخول عبر Google
+  // بدل/بالإضافة إلى كلمة المرور. لا يزال الحساب نفسه يُنشأ حصرياً من طرف المشرف أو المفتش.
+  googleId          String?  @unique
+  role              String // teacher | inspector | director | admin
+  avatar            String?
+  phone             String?
+  directorateId     String
+  districtId        String
+  institutionId     String?
+  schoolName        String?
+  municipality      String?
+  specialization    String?
+  cycle             String?
+  yearsExperience   Int?
+  bio               String?
+  status            String   @default("active") // active | inactive
+  isApprovedByAdmin Boolean  @default(false)
+  followingIds      String[] @default([])
+  followersIds      String[] @default([])
+  publishedResourcesCount Int @default(0)
+  approvedResourcesCount  Int @default(0)
+  privacySettings   Json?
+  // مفتاح Gemini الخاص بالمستخدم (اختياري) — يُستخدم فقط من الخادم، لا يُعرض للعميل بعد الحفظ
+  customApiKey      String?
+  apiKeyStatus      String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // بلدية العمل كسجل مرتبط فعلياً بجدول Municipalities (municipality أعلاه يبقى كاسم نصي مخزَّن للعرض السريع فقط)
+  municipalityId    String?
+
+  resetTokens PasswordResetToken[]
+
+  // نظام الإسناد التلقائي للأساتذة إلى المفتشين
+  teacherAssignment    InspectorAssignment?  @relation("TeacherAssignment")
+  inspectorAssignments InspectorAssignment[] @relation("InspectorAssignments")
+
+  @@index([role])
+  @@index([directorateId])
+  @@index([districtId])
+  @@index([municipalityId])
+}
+
+// -----------------------------------------------------------------------
+// نظام الإسناد التلقائي للأساتذة إلى المفتشين
+// Directorates / Municipalities / Schools / InspectionDistricts هي الهيكل
+// الإداري الرسمي، وتُدار من طرف الإدارة (admin) عبر مسارات مخصصة، بينما
+// InspectorAssignment هو ناتج منطق الإسناد التلقائي المحسوب من طرف الخادم.
+// -----------------------------------------------------------------------
+
+model Directorate {
+  id         String   @id
+  name       String // e.g. مديرية التربية لولاية سطيف
+  wilayaCode String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  municipalities Municipality[]
+  districts      InspectionDistrict[]
+
+  @@index([name])
+}
+
+model Municipality {
+  id            String   @id @default(cuid())
+  name          String
+  directorateId String
+  directorate   Directorate @relation(fields: [directorateId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  schools     School[]
+  suggestions MunicipalitySuggestion[]
+
+  @@unique([directorateId, name])
+  @@index([directorateId])
+}
+
+model School {
+  id             String   @id @default(cuid())
+  name           String
+  municipalityId String
+  municipality   Municipality @relation(fields: [municipalityId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  suggestions SchoolSuggestion[]
+
+  @@unique([municipalityId, name])
+  @@index([municipalityId])
+}
+
+model InspectionDistrict {
+  id             String   @id @default(cuid())
+  name           String // e.g. المقاطعة 07 - عين أزال
+  directorateId  String
+  directorate    Directorate @relation(fields: [directorateId], references: [id], onDelete: Cascade)
+  districtNumber Int?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@unique([directorateId, name])
+  @@index([directorateId])
+}
+
+// اقتراح إضافة بلدية غير موجودة في القائمة — يقدّمه الأستاذ أثناء استكمال بياناته،
+// ولا يظهر لبقية المستخدمين حتى تعتمده الإدارة (يتحول عندها إلى سجل Municipality حقيقي)
+model MunicipalitySuggestion {
+  id            String   @id @default(cuid())
+  name          String
+  directorateId String
+  municipality  Municipality? @relation(fields: [approvedMunicipalityId], references: [id], onDelete: SetNull)
+  approvedMunicipalityId String?
+  suggestedBy   String // User.id لصاحب الاقتراح
+  status        String   @default("pending") // pending | approved | rejected
+  reviewedBy    String?
+  reviewedAt    DateTime?
+  createdAt     DateTime @default(now())
+
+  @@index([directorateId])
+  @@index([status])
+}
+
+// اقتراح إضافة مؤسسة تعليمية غير موجودة في القائمة
+model SchoolSuggestion {
+  id             String   @id @default(cuid())
+  name           String
+  municipalityId String
+  school         School?  @relation(fields: [approvedSchoolId], references: [id], onDelete: SetNull)
+  approvedSchoolId String?
+  suggestedBy    String
+  status         String   @default("pending") // pending | approved | rejected
+  reviewedBy     String?
+  reviewedAt     DateTime?
+  createdAt      DateTime @default(now())
+
+  @@index([municipalityId])
+  @@index([status])
+}
+
+// سجل الإسناد: كل أستاذ يملك سجلاً واحداً فقط (@unique على teacherId)، والمفتش
+// يمكن أن يظهر في عدة سجلات (علاقة واحد-إلى-متعدد حقيقية عبر جدول Postgres، وليس
+// حساباً في الذاكرة)
+model InspectorAssignment {
+  id          String    @id @default(cuid())
+  teacherId   String    @unique
+  teacher     User      @relation("TeacherAssignment", fields: [teacherId], references: [id], onDelete: Cascade)
+  inspectorId String?
+  inspector   User?     @relation("InspectorAssignments", fields: [inspectorId], references: [id], onDelete: SetNull)
+  status      String    @default("Pending") // Pending | Active | Changed | Removed
+  assignedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([inspectorId])
+  @@index([status])
+}
+
+// رموز استرجاع كلمة المرور عبر البريد الإلكتروني — رمز واحد صالح لمرة واحدة فقط
+// نخزّن هاش الرمز فقط (وليس الرمز نفسه)، تماماً كما لا نخزّن كلمات المرور نص عادي
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// -----------------------------------------------------------------------
+// بقية المجموعات: هيكلها الحالي معقد ومتغيّر في الواجهة الأمامية، لذا تُخزَّن
+// كـ JSON منظم داخل أعمدة Postgres حقيقية (وليس ملف JSON على القرص) مع أعمدة
+// مفهرسة إضافية للاستعلامات الشائعة والصلاحيات.
+// -----------------------------------------------------------------------
+
+model LessonPlan {
+  id        String   @id
+  ownerId   String?
+  data      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId])
+}
+
+model NotebookEntry {
+  id        String   @id
+  ownerId   String?
+  data      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId])
+}
+
+model InspectorNote {
+  id        String   @id
+  authorId  String?
+  data      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([authorId])
+}
+
+model DistrictMessage {
+  id        String   @id
+  authorId  String?
+  data      Json
+  createdAt DateTime @default(now())
+
+  @@index([authorId])
+}
+
+model DirectMessage {
+  id           String   @id
+  senderId     String?
+  recipientId  String?
+  data         Json
+  createdAt    DateTime @default(now())
+
+  @@index([senderId])
+  @@index([recipientId])
+}
+
+model CommunityResource {
+  id        String   @id
+  authorId  String?
+  data      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([authorId])
+}
+
+model CommunityNotification {
+  id         String   @id
+  userId     String?
+  data       Json
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+}
