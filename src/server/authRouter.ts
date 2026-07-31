@@ -12,7 +12,7 @@ import {
   signSession,
   setSessionCookie,
   clearSessionCookie,
-  sanitizeUser,
+  sanitizeOwnUser,
   getSessionTokenFromRequest,
   verifySession,
   generateResetToken,
@@ -92,7 +92,7 @@ authRouter.post('/register', async (req, res) => {
     const token = signSession({ userId: user.id, role: user.role });
     setSessionCookie(res, token);
 
-    res.json({ success: true, user: sanitizeUser(user) });
+    res.json({ success: true, user: sanitizeOwnUser(user) });
   } catch (err: any) {
     console.error('Registration error:', err);
     res.status(500).json({ error: 'تعذر إنشاء الحساب، يرجى إعادة المحاولة.' });
@@ -122,7 +122,7 @@ authRouter.post('/login', async (req, res) => {
   const token = signSession({ userId: user.id, role: user.role });
   setSessionCookie(res, token);
 
-  res.json({ success: true, user: sanitizeUser(user) });
+  res.json({ success: true, user: sanitizeOwnUser(user) });
 });
 
 authRouter.post('/logout', (req, res) => {
@@ -187,7 +187,7 @@ authRouter.post('/google', async (req, res) => {
   const token = signSession({ userId: user.id, role: user.role });
   setSessionCookie(res, token);
 
-  res.json({ success: true, user: sanitizeUser(user) });
+  res.json({ success: true, user: sanitizeOwnUser(user) });
 });
 
 // ربط حساب Google بحساب مسجّل الدخول حالياً (من صفحة الإعدادات، بدلاً من شاشة الدخول)
@@ -222,13 +222,13 @@ authRouter.post('/google/link', requireAuth, async (req, res) => {
   }
 
   const updated = await prisma.user.update({ where: { id: req.user!.id }, data: { googleId: profile.googleId } });
-  res.json({ success: true, user: sanitizeUser(updated) });
+  res.json({ success: true, user: sanitizeOwnUser(updated) });
 });
 
 // إلغاء ربط حساب Google (يبقى الدخول ممكناً عبر البريد وكلمة المرور)
 authRouter.post('/google/unlink', requireAuth, async (req, res) => {
   const updated = await prisma.user.update({ where: { id: req.user!.id }, data: { googleId: null } });
-  res.json({ success: true, user: sanitizeUser(updated) });
+  res.json({ success: true, user: sanitizeOwnUser(updated) });
 });
 
 // -----------------------------------------------------------------------
@@ -313,7 +313,7 @@ authRouter.get('/me', async (req, res) => {
     return res.status(401).json({ error: 'الحساب غير موجود.' });
   }
 
-  res.json({ success: true, user: sanitizeUser(user) });
+  res.json({ success: true, user: sanitizeOwnUser(user) });
 });
 
 // -----------------------------------------------------------------------

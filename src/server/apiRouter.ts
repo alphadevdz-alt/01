@@ -6,7 +6,7 @@
 import { Router } from 'express';
 import { generatePELessonPlan, suggestPEGames, generateAIChatResponse, testGeminiApiKey } from './aiService.js';
 import { prisma } from './prismaClient.js';
-import { hashPassword, sanitizeUser } from './auth.js';
+import { hashPassword, sanitizeUser, sanitizeOwnUser } from './auth.js';
 import { requireAuth, requireRole } from './middleware/requireAuth.js';
 import { reassignTeacher, reassignAllForInspector } from './assignmentService.js';
 
@@ -46,7 +46,11 @@ apiRouter.use(requireAuth);
 // -----------------------------------------------------------------------
 apiRouter.get('/db/users', async (req, res) => {
   const users = await prisma.user.findMany({ orderBy: { createdAt: 'desc' } });
-  res.json({ success: true, users: users.map(sanitizeUser) });
+  const isAdmin = req.user!.role === 'admin';
+  res.json({
+    success: true,
+    users: users.map((u) => (isAdmin || u.id === req.user!.id ? sanitizeOwnUser(u) : sanitizeUser(u)))
+  });
 });
 
 async function buildUserWriteData(input: any) {
@@ -118,7 +122,7 @@ apiRouter.post('/db/users', async (req, res) => {
 
     await triggerAutoAssignment(saved);
 
-    res.json({ success: true, user: sanitizeUser(saved) });
+    res.json({ success: true, user: isSelf || isAdmin ? sanitizeOwnUser(saved) : sanitizeUser(saved) });
   } catch (err: any) {
     if (err.code === 'P2002') {
       return res.status(409).json({ error: 'البريد الإلكتروني أو اسم المستخدم مستخدم بالفعل.' });
@@ -189,12 +193,27 @@ function jsonCollectionRoutes(opts: {
   listKey: string;
   batchBodyKey?: string;
   ownerField?: 'ownerId' | 'authorId' | 'userId' | 'senderId';
+  // فلترة اختيارية لتقييد ما يظهر للمستخدم عند القراءة (خصوصية الكراس اليومي، ملاحظات
+  // التفتيش، الرسائل الخاصة...) — بدونها كان أي مستخدم مسجّل دخول يستطيع قراءة بيانات الجميع
+  visibleTo?: (row: any, user: { id: string; role: string; districtId: string }) => boolean;
+  // افتراضياً: عند الإنشاء، حقل المالك يُفرض دائماً على هوية صاحب الطلب (منع انتحال هوية
+  // كاتب المحتوى). عطّلها فقط عندما يمثّل الحقل طرفاً آخر غير المُرسل (مثل مستلم الإشعار)
+  ownerAssignedByServer?: boolean;
 }) {
-  const { path, model, bodyKey, listKey, batchBodyKey, ownerField } = opts;
+  const { path, model, bodyKey, listKey, batchBodyKey, ownerField, visibleTo, ownerAssignedByServer = true } = opts;
+
+  // هل يملك المستخدم صلاحية تعديل/حذف سجل موجود مسبقاً؟ (مالكه، أو admin دائماً)
+  function canWrite(existing: any, user: { id: string; role: string }): boolean {
+    if (!existing) return true; // سجل جديد — يُتحقق من صلاحية الإنشاء بشكل منفصل عند الحاجة
+    if (user.role === 'admin') return true;
+    if (!ownerField) return true;
+    return existing[ownerField] === user.id;
+  }
 
   apiRouter.get(`/db/${path}`, async (req, res) => {
     const rows = await model.findMany({ orderBy: { createdAt: 'desc' } });
-    res.json({ success: true, [listKey]: rows.map((r: any) => ({ ...r.data, id: r.id })) });
+    const visible = visibleTo ? rows.filter((r: any) => visibleTo(r, req.user!)) : rows;
+    res.json({ success: true, [listKey]: visible.map((r: any) => ({ ...r.data, id: r.id })) });
   });
 
   apiRouter.post(`/db/${path}`, async (req, res) => {
@@ -202,8 +221,20 @@ function jsonCollectionRoutes(opts: {
     if (!item || !item.id) {
       return res.status(400).json({ error: 'بيانات غير مكتملة' });
     }
+
+    const existing = await model.findUnique({ where: { id: item.id } });
+    if (!canWrite(existing, req.user!)) {
+      return res.status(403).json({ error: 'لا تملك الصلاحية لتعديل هذا العنصر.' });
+    }
+
     const data: any = { data: item };
-    if (ownerField) data[ownerField] = item[ownerField] || req.user!.id;
+    // لا يمكن تغيير مالك السجل عند التعديل (منع انتحال الملكية)؛ عند الإنشاء يُنسب دائماً
+    // لصاحب الطلب ما لم يكن الحقل يمثّل طرفاً آخر (مثل مستلم الإشعار)
+    if (ownerField) {
+      data[ownerField] = existing
+        ? existing[ownerField]
+        : (ownerAssignedByServer ? req.user!.id : (item[ownerField] || req.user!.id));
+    }
 
     await model.upsert({
       where: { id: item.id },
@@ -221,8 +252,15 @@ function jsonCollectionRoutes(opts: {
       }
       for (const item of items) {
         if (!item.id) continue;
+        const existing = await model.findUnique({ where: { id: item.id } });
+        if (!canWrite(existing, req.user!)) continue; // تجاهل العناصر التي لا يملك المستخدم صلاحية تعديلها
+
         const data: any = { data: item };
-        if (ownerField) data[ownerField] = item[ownerField] || req.user!.id;
+        if (ownerField) {
+          data[ownerField] = existing
+            ? existing[ownerField]
+            : (ownerAssignedByServer ? req.user!.id : (item[ownerField] || req.user!.id));
+        }
         await model.upsert({
           where: { id: item.id },
           create: { id: item.id, ...data },
@@ -235,6 +273,10 @@ function jsonCollectionRoutes(opts: {
 
   apiRouter.delete(`/db/${path}/:id`, async (req, res) => {
     try {
+      const existing = await model.findUnique({ where: { id: req.params.id } });
+      if (existing && !canWrite(existing, req.user!)) {
+        return res.status(403).json({ error: 'لا تملك الصلاحية لحذف هذا العنصر.' });
+      }
       await model.delete({ where: { id: req.params.id } });
     } catch {
       // غير موجود مسبقاً
@@ -243,57 +285,65 @@ function jsonCollectionRoutes(opts: {
   });
 }
 
-// 2. Lesson Plans
+const isStaff = (user: { role: string }) => user.role === 'admin' || user.role === 'inspector';
+
+// 2. Lesson Plans — خاصة بالأستاذ صاحبها، ومرئية أيضاً لطاقم الإشراف (admin/inspector)
 jsonCollectionRoutes({
   path: 'lesson-plans',
   model: prisma.lessonPlan,
   bodyKey: 'lessonPlan',
   listKey: 'lessonPlans',
   batchBodyKey: 'lessonPlans',
-  ownerField: 'ownerId'
+  ownerField: 'ownerId',
+  visibleTo: (row, user) => isStaff(user) || row.ownerId === user.id
 });
 
-// 3. Daily Notebook
+// 3. Daily Notebook — كراس يومي خاص بالأستاذ، لا يُعرض لبقية الأساتذة
 jsonCollectionRoutes({
   path: 'notebook',
   model: prisma.notebookEntry,
   bodyKey: 'entry',
   listKey: 'dailyNotebook',
   batchBodyKey: 'dailyNotebook',
-  ownerField: 'ownerId'
+  ownerField: 'ownerId',
+  visibleTo: (row, user) => isStaff(user) || row.ownerId === user.id
 });
 
-// 4. Inspector Notes
+// 4. Inspector Notes — يراها كاتبها (المفتش) والأستاذ المعنيّ بها فقط، بالإضافة إلى admin
 jsonCollectionRoutes({
   path: 'inspector-notes',
   model: prisma.inspectorNote,
   bodyKey: 'note',
   listKey: 'inspectorNotes',
   batchBodyKey: 'inspectorNotes',
-  ownerField: 'authorId'
+  ownerField: 'authorId',
+  visibleTo: (row, user) =>
+    user.role === 'admin' || row.authorId === user.id || row.data?.teacherId === user.id
 });
 
-// 5. District Group Chat
+// 5. District Group Chat — تُعرض ضمن نطاق مقاطعة المستخدم (districtId) فقط
 jsonCollectionRoutes({
   path: 'district-messages',
   model: prisma.districtMessage,
   bodyKey: 'message',
   listKey: 'districtMessages',
   batchBodyKey: 'districtMessages',
-  ownerField: 'authorId'
+  ownerField: 'authorId',
+  visibleTo: (row, user) => user.role === 'admin' || row.data?.districtId === user.districtId
 });
 
-// 6. Direct Messages
+// 6. Direct Messages — خاصة بطرفي المحادثة فقط (المُرسل والمُستقبِل)
 jsonCollectionRoutes({
   path: 'direct-messages',
   model: prisma.directMessage,
   bodyKey: 'message',
   listKey: 'directMessages',
   batchBodyKey: 'directMessages',
-  ownerField: 'senderId'
+  ownerField: 'senderId',
+  visibleTo: (row, user) => row.senderId === user.id || row.data?.receiverId === user.id
 });
 
-// 7. Community Resources
+// 7. Community Resources — محتوى عام مشترك، يبقى مرئياً للجميع كما هو مصمَّم
 jsonCollectionRoutes({
   path: 'community-resources',
   model: prisma.communityResource,
@@ -303,13 +353,15 @@ jsonCollectionRoutes({
   ownerField: 'authorId'
 });
 
-// 8. Community Notifications
+// 8. Community Notifications — تُعرض فقط لمستلمها أو مُرسلها
 jsonCollectionRoutes({
   path: 'community-notifications',
   model: prisma.communityNotification,
   bodyKey: 'notification',
   listKey: 'communityNotifications',
-  ownerField: 'userId'
+  ownerField: 'userId',
+  ownerAssignedByServer: false,
+  visibleTo: (row, user) => user.role === 'admin' || row.userId === user.id || row.data?.senderId === user.id
 });
 
 // -----------------------------------------------------------------------
@@ -350,7 +402,7 @@ apiRouter.post('/ai/generate-lesson', async (req, res) => {
     res.json({ success: true, data: lessonData });
   } catch (error: any) {
     console.error('Error in /ai/generate-lesson:', error);
-    res.status(500).json({ error: 'حدث خطأ أثناء التوليد من قاعدة البيانات', details: error.message });
+    res.status(500).json({ error: 'حدث خطأ أثناء توليد المذكرة، يرجى المحاولة لاحقاً.' });
   }
 });
 
@@ -361,7 +413,8 @@ apiRouter.post('/ai/suggest-games', async (req, res) => {
     const games = await suggestPEGames(fieldName || 'الميدان الجماعي', levelName || 'ابتدائي', keyToUse);
     res.json({ success: true, games });
   } catch (error: any) {
-    res.status(500).json({ error: 'خطأ في اقتراح الألعاب', details: error.message });
+    console.error('Error in /ai/suggest-games:', error);
+    res.status(500).json({ error: 'خطأ في اقتراح الألعاب، يرجى المحاولة لاحقاً.' });
   }
 });
 
@@ -375,6 +428,7 @@ apiRouter.post('/ai/chat', async (req, res) => {
     const responseText = await generateAIChatResponse(message, history || [], keyToUse);
     res.json({ success: true, response: responseText });
   } catch (error: any) {
-    res.status(500).json({ error: 'خطأ في الاستعلام من قاعدة البيانات', details: error.message });
+    console.error('Error in /ai/chat:', error);
+    res.status(500).json({ error: 'حدث خطأ أثناء المحادثة، يرجى المحاولة لاحقاً.' });
   }
 });
