@@ -1,0 +1,155 @@
+import React from 'react';
+import { Play, Users, FileText, Zap, ShieldAlert, Sparkles } from 'lucide-react';
+import { ClassRoom, LessonPlan, LessonSession } from '../../../types/spex';
+import { CONTINGENCY_MODES } from '../../../constants/lessonCommandCenter.constants';
+
+interface CommandCenterPreSessionSetupProps {
+  teacherClasses: ClassRoom[];
+  selectedClassId: string;
+  onSelectClassId: (id: string) => void;
+  lessonPlans: LessonPlan[];
+  selectedLessonPlanId: string;
+  onSelectLessonPlanId: (id: string) => void;
+  contingencyMode: string;
+  onSelectContingencyMode: (mode: any) => void;
+  onStartSession: (sessionData: Omit<LessonSession, 'id'>) => void;
+  onNavigateToLessonPlans: () => void;
+}
+
+export const CommandCenterPreSessionSetup: React.FC<CommandCenterPreSessionSetupProps> = ({
+  teacherClasses,
+  selectedClassId,
+  onSelectClassId,
+  lessonPlans,
+  selectedLessonPlanId,
+  onSelectLessonPlanId,
+  contingencyMode,
+  onSelectContingencyMode,
+  onStartSession,
+  onNavigateToLessonPlans,
+}) => {
+  const selectedClass = teacherClasses.find((c) => c.id === selectedClassId) || teacherClasses[0];
+  const selectedPlan = lessonPlans.find((lp) => lp.id === selectedLessonPlanId) || lessonPlans[0];
+
+  const handleLaunch = () => {
+    onStartSession({
+      classId: selectedClassId || teacherClasses[0]?.id || 'cls_1',
+      className: selectedClass?.name || '1 ابتدائي 1',
+      lessonPlanId: selectedLessonPlanId || lessonPlans[0]?.id || 'lp_1',
+      lessonTitle: selectedPlan?.sessionTitle || 'حصة بيداغوجية موجهة',
+      levelName: selectedPlan?.levelName || selectedClass?.levelId || 'السنة الأولى ابتدائي',
+      startTime: new Date().toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' }),
+      currentPhase: 'warmup',
+      phaseElapsedTime: 0,
+      totalElapsedTime: 0,
+      isPaused: false,
+      contingencyMode: contingencyMode as any,
+    });
+  };
+
+  return (
+    <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-md space-y-5 animate-in fade-in duration-200">
+      <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+        <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600">
+          <Zap className="w-5 h-5" />
+        </div>
+        <div>
+          <h3 className="text-base font-extrabold text-slate-900">إعداد انطلاق الحصة الميدانية</h3>
+          <p className="text-xs text-slate-500">اختر القسم، المذكرة البيداغوجية، وظروف الحصة لبدء التوقيت الحي</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Class Selection */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+            <Users className="w-4 h-4 text-emerald-600" />
+            <span>1. اختر القسم التربوي:</span>
+          </label>
+          <select
+            value={selectedClassId}
+            onChange={(e) => onSelectClassId(e.target.value)}
+            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-black outline-none focus:border-emerald-500 cursor-pointer"
+          >
+            {teacherClasses.map((cls) => (
+              <option key={cls.id} value={cls.id}>
+                {cls.name} ({cls.studentCount || 25} تلميذاً)
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Lesson Plan Selection */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+            <FileText className="w-4 h-4 text-blue-600" />
+            <span>2. المذكرة البيداغوجية المعتمدة:</span>
+          </label>
+          <select
+            value={selectedLessonPlanId}
+            onChange={(e) => onSelectLessonPlanId(e.target.value)}
+            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-black outline-none focus:border-blue-500 cursor-pointer"
+          >
+            {lessonPlans.map((lp) => (
+              <option key={lp.id} value={lp.id}>
+                {lp.sessionTitle} ({lp.levelName || 'ابتدائي'})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Contingency Mode Selection */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+            <ShieldAlert className="w-4 h-4 text-amber-600" />
+            <span>3. تكييف الظروف والبيئة:</span>
+          </label>
+          <select
+            value={contingencyMode}
+            onChange={(e) => onSelectContingencyMode(e.target.value)}
+            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-black outline-none focus:border-amber-500 cursor-pointer"
+          >
+            {CONTINGENCY_MODES.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Selected Lesson Overview */}
+      {selectedPlan && (
+        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-2 text-xs">
+          <div className="flex items-center justify-between">
+            <span className="font-extrabold text-slate-900">{selectedPlan.sessionTitle}</span>
+            <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full">
+              {selectedPlan.duration || '45 دقيقة'}
+            </span>
+          </div>
+          <p className="text-slate-600 leading-relaxed">
+            <strong>الهدف التعلمي:</strong> {selectedPlan.generalObjective || 'تنمية المهارات الحركية والتنقل بالتوازن'}
+          </p>
+        </div>
+      )}
+
+      {/* Launch Button */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+        <button
+          onClick={onNavigateToLessonPlans}
+          className="text-xs font-bold text-slate-500 hover:text-slate-800 underline cursor-pointer"
+        >
+          + إضافة أو تعديل مذكرة بيداغوجية
+        </button>
+
+        <button
+          onClick={handleLaunch}
+          className="w-full sm:w-auto px-8 py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm rounded-2xl shadow-lg shadow-emerald-600/20 transition-all cursor-pointer flex items-center justify-center gap-2"
+        >
+          <Play className="w-5 h-5 fill-current" />
+          <span>انطلاق الحصة الآن الميدان والتوقيت</span>
+        </button>
+      </div>
+    </div>
+  );
+};

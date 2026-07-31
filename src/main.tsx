@@ -11,7 +11,7 @@ createRoot(document.getElementById('root')!).render(
 
 // Register the PWA service worker (production builds only, so the dev server
 // hot-reload experience stays untouched).
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
+if ('serviceWorker' in navigator && (import.meta as any).env?.PROD) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch((err) => {
       console.warn('SPEX: تعذّر تسجيل Service Worker', err);
