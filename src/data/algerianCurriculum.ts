@@ -753,7 +753,7 @@ export function generateAnnualTimeDistribution(
   const levelData = COMPLETE_ANNUAL_CURRICULUM[levelId] || COMPLETE_ANNUAL_CURRICULUM['lvl_p1'];
   const scheduledSessions: ScheduledAnnualSession[] = [];
 
-  let currentDate = new Date(startDateStr);
+  const currentDate = new Date(startDateStr);
 
   // Align to first occurrence of the selected teaching day of week
   while (currentDate.getDay() !== (teachingDayOfWeek === 0 ? 0 : teachingDayOfWeek)) {

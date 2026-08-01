@@ -86,7 +86,6 @@ app.get('*', (req, res, next) => {
 });
 
 // معالج أخطاء عام في آخر السلسلة — لا نسرّب تفاصيل الخطأ الداخلي للعميل
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('Unhandled server error:', err);
   res.status(500).json({ error: 'حدث خطأ غير متوقع في الخادم.' });
