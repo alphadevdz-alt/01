@@ -1,0 +1,64 @@
+services:
+- type: web
+  name: spex-platform
+  runtime: node
+  plan: free
+  buildCommand: npm run render:build
+  startCommand: npm run render:start
+  healthCheckPath: /health
+  autoDeployTrigger: commit
+  envVars:
+  - key: NODE_VERSION
+    value: 22.22.0
+  - key: NODE_ENV
+    value: production
+  - key: DATABASE_URL
+    sync: false
+  - key: DIRECT_URL
+    sync: false
+  - key: APP_URL
+    sync: false
+  - key: JWT_SECRET
+    generateValue: true
+  - key: API_KEY_ENCRYPTION_SECRET
+    generateValue: true
+  - key: SETUP_SECRET
+    generateValue: true
+  - key: RUN_DB_MIGRATIONS_ON_STARTUP
+    value: 'false'
+  - key: RESEND_API_KEY
+    sync: false
+  - key: EMAIL_FROM
+    sync: false
+  - key: GOOGLE_CLIENT_ID
+    sync: false
+  - key: GOOGLE_CLIENT_SECRET
+    sync: false
+  - key: VITE_GOOGLE_CLIENT_ID
+    sync: false
+  - key: NVIDIA_API_KEY
+    sync: false
+  - key: NVIDIA_BASE_URL
+    value: https://integrate.api.nvidia.com/v1
+  - key: NVIDIA_MODEL
+    value: meta/llama-3.1-8b-instruct
+  - key: OPENAI_API_KEY
+    sync: false
+  - key: OPENAI_BASE_URL
+    value: https://api.openai.com/v1
+  - key: OPENAI_MODEL
+    value: gpt-4o-mini
+  - key: ANTHROPIC_API_KEY
+    sync: false
+  - key: ANTHROPIC_MODEL
+    value: claude-3-5-haiku-latest
+  - key: GEMINI_API_KEY
+    sync: false
+  - key: GEMINI_MODEL
+    value: gemini-2.5-flash
+  - key: AI_COMPATIBLE_API_KEY
+    sync: false
+  - key: AI_COMPATIBLE_BASE_URL
+    sync: false
+  - key: AI_COMPATIBLE_MODEL
+    sync: false
