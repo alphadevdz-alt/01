@@ -1,6 +1,6 @@
 /**
  * SPEX - Inspector Portal / Dashboard Component
- * بوابة المفتش البيداغوجي: متابعة الأساتذة، التوزيع الأسبوعي، المخطط البيداغوجي، المذكرات، والتوجيهات الرسمية.
+ * بوابة المفتش البيداغوجي: متابعة الأساتذة، المصادقة على الموارد، سجل الزيارات والشهادات الرسمية، تدقيق المنهاج، والتوجيهات.
  */
 
 import React, { useState } from 'react';
@@ -15,6 +15,7 @@ import {
   WeeklyScheduleSlot,
   LessonPlan,
   DailyNotebookEntry,
+  CommunityResource,
 } from '../../types/spex';
 
 import { useInspectorDashboardStats } from '../../hooks/useInspectorDashboardStats';
@@ -22,7 +23,7 @@ import { useTeacher } from '../../hooks/useTeacher';
 import { useLessonPlans } from '../../hooks/useLessonPlans';
 import { useReports } from '../../hooks/useReports';
 
-import { InspectorHeroHeader } from './inspector/InspectorHeroHeader';
+import { InspectorHeroHeader, InspectorMainTab } from './inspector/InspectorHeroHeader';
 import { InspectorKpiGrid } from './inspector/InspectorKpiGrid';
 import { InspectorActivityFeed } from './inspector/InspectorActivityFeed';
 import { InspectorDistrictChart } from './inspector/InspectorDistrictChart';
@@ -30,6 +31,11 @@ import { InspectorTeacherList } from './inspector/InspectorTeacherList';
 import { InspectorPedagogicalProfile } from './inspector/InspectorPedagogicalProfile';
 import { InspectorDirectChat } from './inspector/InspectorDirectChat';
 import { InspectorModals } from './inspector/InspectorModals';
+
+import { InspectorResourceValidationView } from './inspector/InspectorResourceValidationView';
+import { InspectorReportsView } from './inspector/InspectorReportsView';
+import { InspectorCurriculumAuditView } from './inspector/InspectorCurriculumAuditView';
+import { InspectorBroadcastsView } from './inspector/InspectorBroadcastsView';
 
 interface InspectorDashboardProps {
   inspector: User;
@@ -43,6 +49,8 @@ interface InspectorDashboardProps {
   weeklySchedule?: WeeklyScheduleSlot[];
   lessonPlans?: LessonPlan[];
   dailyNotebook?: DailyNotebookEntry[];
+  communityResources?: CommunityResource[];
+  onToggleApproveResource?: (resourceId: string) => void;
   onAddNote: (note: Partial<InspectorNote>) => void;
   onAddVisit: (visit: Partial<InspectionVisit>) => void;
   onAddBroadcast?: (broadcast: Partial<DistrictBroadcast>) => void;
@@ -61,13 +69,15 @@ export const InspectorDashboard: React.FC<InspectorDashboardProps> = ({
   weeklySchedule = [],
   lessonPlans = [],
   dailyNotebook = [],
+  communityResources = [],
+  onToggleApproveResource,
   onAddNote,
   onAddVisit,
   onAddBroadcast,
   onAddDirectMessage,
 }) => {
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>(teachers[0]?.id || '');
-  const [activeTab, setActiveTab] = useState<'overview' | 'chat'>('overview');
+  const [activeTab, setActiveTab] = useState<InspectorMainTab>('overview');
   const [teacherSubTab, setTeacherSubTab] = useState<
     'annual_plan' | 'schedule' | 'lesson_plans' | 'students' | 'visits'
   >('annual_plan');
@@ -121,6 +131,7 @@ export const InspectorDashboard: React.FC<InspectorDashboardProps> = ({
         inspectorName: `${inspector.firstName} ${inspector.lastName}`,
         title,
         content,
+        category: 'توجيه_بيداغوجي',
         createdAt: new Date().toISOString(),
       });
     }
@@ -132,8 +143,10 @@ export const InspectorDashboard: React.FC<InspectorDashboardProps> = ({
       senderId: inspector.id,
       senderName: `المفتش ${inspector.firstName} ${inspector.lastName}`,
       senderRole: 'inspector',
-      receiverId: selectedTeacher.id,
-      receiverName: `${selectedTeacher.firstName} ${selectedTeacher.lastName}`,
+      receiverId: selectedTeacher?.id || teachers[0]?.id || 'usr_teacher_1',
+      receiverName: selectedTeacher
+        ? `${selectedTeacher.firstName} ${selectedTeacher.lastName}`
+        : 'أستاذ المادة',
       districtId: inspector.districtId || 'dist_1',
       message: text,
       createdAt: new Date().toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' }),
@@ -141,7 +154,7 @@ export const InspectorDashboard: React.FC<InspectorDashboardProps> = ({
 
     setLocalChatMessages((prev) => [...prev, newMsg]);
 
-    if (onAddDirectMessage) {
+    if (onAddDirectMessage && selectedTeacher) {
       onAddDirectMessage({
         receiverId: selectedTeacher.id,
         receiverName: `${selectedTeacher.firstName} ${selectedTeacher.lastName}`,
@@ -150,31 +163,56 @@ export const InspectorDashboard: React.FC<InspectorDashboardProps> = ({
     }
   };
 
+  const handleSendNoteToTeacher = (
+    teacherId: string,
+    teacherName: string,
+    title: string,
+    content: string
+  ) => {
+    onAddNote({
+      id: `note_${Date.now()}`,
+      inspectorId: inspector.id,
+      inspectorName: `المفتش ${inspector.firstName} ${inspector.lastName}`,
+      teacherId,
+      teacherName,
+      moduleRef: 'general',
+      title,
+      content,
+      priority: 'عادية',
+      status: 'جديدة',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+  };
+
+  const pendingResourcesCount = communityResources.filter((r) => !r.isApprovedByInspector).length;
+
   return (
     <div className="space-y-6 pb-12 dir-rtl">
-      {/* Hero Header */}
+      {/* Navigation & Hero Header */}
       <InspectorHeroHeader
         inspector={inspector}
         activeTab={activeTab}
-        onToggleActiveTab={() => setActiveTab(activeTab === 'chat' ? 'overview' : 'chat')}
+        onSelectTab={setActiveTab}
+        pendingResourcesCount={pendingResourcesCount}
         onOpenBroadcastModal={() => setShowBroadcastModal(true)}
         onOpenVisitModal={() => setShowVisitModal(true)}
       />
 
-      {/* KPI Stats Grid */}
-      <InspectorKpiGrid
-        teachersCount={teachers.length}
-        institutionsCount={globalStats.institutionsCount}
-        completionRate={globalStats.completionRate}
-        inactiveTeachersCount={globalStats.inactiveTeachers.length}
-        lateReportsCount={globalStats.lateReportTeachers.length}
-        totalStudentsTaught={totalStudentsTaught}
-        weeklyHoursCount={weeklyHoursCount}
-      />
-
-      {/* Active Tab View */}
-      {activeTab === 'overview' ? (
+      {/* Overview Main View */}
+      {activeTab === 'overview' && (
         <div className="space-y-6 animate-in fade-in duration-200">
+          {/* KPI Stats Grid */}
+          <InspectorKpiGrid
+            teachersCount={teachers.length}
+            institutionsCount={globalStats.institutionsCount}
+            completionRate={globalStats.completionRate}
+            inactiveTeachersCount={globalStats.inactiveTeachers.length}
+            lateReportsCount={globalStats.lateReportTeachers.length}
+            totalStudentsTaught={totalStudentsTaught}
+            weeklyHoursCount={weeklyHoursCount}
+          />
+
           {/* Teacher Selection Grid */}
           <InspectorTeacherList
             teachers={teachers}
@@ -197,9 +235,9 @@ export const InspectorDashboard: React.FC<InspectorDashboardProps> = ({
             selectedInspectorLevelId={selectedInspectorLevelId}
             onSetSelectedInspectorLevelId={setSelectedInspectorLevelId}
             teacherLessonPlans={filteredTeacherPlans}
-            teacherNotebook={dailyNotebook.filter((nb) => nb.teacherId === selectedTeacher.id)}
+            teacherNotebook={dailyNotebook.filter((nb) => nb.teacherId === selectedTeacher?.id)}
             teacherScheduleSlots={weeklySchedule.filter(
-              (s) => !s.teacherId || s.teacherId === selectedTeacher.id
+              (s) => !s.teacherId || s.teacherId === selectedTeacher?.id
             )}
             visits={visits}
             notes={notes}
@@ -223,8 +261,50 @@ export const InspectorDashboard: React.FC<InspectorDashboardProps> = ({
             <InspectorDistrictChart chartData={globalStats.institutionChartData} />
           </div>
         </div>
-      ) : (
-        /* Chat View */
+      )}
+
+      {/* Resource Validation View */}
+      {activeTab === 'resource_validation' && (
+        <InspectorResourceValidationView
+          resources={communityResources}
+          teachers={teachers}
+          onToggleApproveResource={
+            onToggleApproveResource || ((id) => console.log('Toggle approve:', id))
+          }
+          onSendNoteToTeacher={handleSendNoteToTeacher}
+        />
+      )}
+
+      {/* Inspection Reports & Certificates View */}
+      {activeTab === 'inspection_reports' && (
+        <InspectorReportsView
+          visits={visits}
+          teachers={teachers}
+          inspector={inspector}
+          onAddVisit={onAddVisit}
+        />
+      )}
+
+      {/* Curriculum Execution Audit View */}
+      {activeTab === 'curriculum_audit' && (
+        <InspectorCurriculumAuditView
+          teachers={teachers}
+          lessonPlans={lessonPlans}
+          onSendNoteToTeacher={handleSendNoteToTeacher}
+        />
+      )}
+
+      {/* District Broadcasts & Seminars View */}
+      {activeTab === 'district_broadcasts' && (
+        <InspectorBroadcastsView
+          broadcasts={broadcasts}
+          inspector={inspector}
+          onAddBroadcast={(bc) => onAddBroadcast && onAddBroadcast(bc)}
+        />
+      )}
+
+      {/* Chat View */}
+      {activeTab === 'chat' && (
         <div className="animate-in fade-in duration-200">
           <InspectorDirectChat
             inspector={inspector}

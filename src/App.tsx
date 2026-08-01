@@ -962,6 +962,20 @@ export default function App() {
     );
   };
 
+  const handleToggleApproveResource = (resourceId: string) => {
+    setCommunityResources((prev) =>
+      prev.map((res) => {
+        if (res.id !== resourceId) return res;
+        const updated = {
+          ...res,
+          isApprovedByInspector: !res.isApprovedByInspector
+        };
+        syncCommunityResourceToDB(updated);
+        return updated;
+      })
+    );
+  };
+
   const handleToggleFollowTeacher = (targetTeacherId: string) => {
     const targetUser = allUsersList.find((u) => u.id === targetTeacherId);
     if (!targetUser) return;
@@ -1271,6 +1285,8 @@ export default function App() {
               weeklySchedule={weeklySchedule}
               lessonPlans={lessonPlans}
               dailyNotebook={dailyNotebook}
+              communityResources={communityResources}
+              onToggleApproveResource={handleToggleApproveResource}
               onAddNote={handleAddInspectorNote}
               onAddVisit={handleAddInspectionVisit}
               onAddBroadcast={(bc) => setBroadcasts((prev) => [bc as any, ...prev])}
