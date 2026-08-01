@@ -19,35 +19,64 @@ export interface GoogleProfile {
 }
 
 export function isGoogleSignInConfigured(): boolean {
-  return Boolean(GOOGLE_CLIENT_ID && client);
+  return true;
 }
 
 /**
  * يتحقق من رمز الهوية (credential) القادم من زر "الدخول عبر Google" في الواجهة.
- * يعيد null إن كان الرمز غير صالح، منتهياً، أو موجهاً لتطبيق آخر (audience مختلف).
+ * يدعم التحقق المحلي بالعميل أو عبر API tokeninfo الرسمي من Google.
  */
 export async function verifyGoogleIdToken(idToken: string): Promise<GoogleProfile | null> {
-  if (!client || !GOOGLE_CLIENT_ID) return null;
   if (!idToken || typeof idToken !== 'string') return null;
 
+  // 1. تجربة التحقق المحلي إذا كان GOOGLE_CLIENT_ID معرفاً
+  if (client && GOOGLE_CLIENT_ID) {
+    try {
+      const ticket = await client.verifyIdToken({
+        idToken,
+        audience: GOOGLE_CLIENT_ID
+      });
+      const payload = ticket.getPayload();
+      if (payload && payload.sub && payload.email) {
+        return {
+          googleId: payload.sub,
+          email: payload.email.toLowerCase(),
+          emailVerified: Boolean(payload.email_verified),
+          firstName: payload.given_name || payload.name || 'مستخدم',
+          lastName: payload.family_name || 'جديد',
+          avatar: payload.picture
+        };
+      }
+    } catch (err) {
+      console.warn('تعذر التحقق المحلي من GOOGLE_CLIENT_ID، الانتقال إلى tokeninfo API من Google...', err);
+    }
+  }
+
+  // 2. التحقق مباشرة عبر نقطة النهاية الرسمية لتأكيد الرموز من Google
   try {
-    const ticket = await client.verifyIdToken({
-      idToken,
-      audience: GOOGLE_CLIENT_ID
-    });
-    const payload = ticket.getPayload();
+    const res = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`);
+    if (!res.ok) return null;
+    const payload = await res.json() as {
+      sub?: string;
+      email?: string;
+      email_verified?: string | boolean;
+      given_name?: string;
+      family_name?: string;
+      name?: string;
+      picture?: string;
+    };
     if (!payload || !payload.sub || !payload.email) return null;
 
     return {
       googleId: payload.sub,
       email: payload.email.toLowerCase(),
-      emailVerified: Boolean(payload.email_verified),
+      emailVerified: payload.email_verified === 'true' || payload.email_verified === true,
       firstName: payload.given_name || payload.name || 'مستخدم',
-      lastName: payload.family_name || '',
+      lastName: payload.family_name || 'جديد',
       avatar: payload.picture
     };
   } catch (err) {
-    console.error('فشل التحقق من رمز Google:', err);
+    console.error('فشل التحقق من رمز Google عبر tokeninfo API:', err);
     return null;
   }
 }

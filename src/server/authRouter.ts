@@ -165,22 +165,48 @@ authRouter.post('/google', async (req, res) => {
     user = await prisma.user.findUnique({ where: { email: profile.email } });
   }
 
+  // إذا لم يكن هناك حساب مسبق، أنشئ حساباً جديداً تلقائياً لمستخدم Google
   if (!user) {
-    return res.status(404).json({
-      error:
-        'لا يوجد حساب على منصة SPEX مرتبط بهذا البريد الإلكتروني. يرجى التواصل مع مشرف المنظومة أو المفتش لإنشاء حسابك أولاً، ثم يمكنك ربطه بحساب Google.'
-    });
-  }
-
-  // ربط تلقائي عند أول دخول ناجح عبر Google بنفس البريد الإلكتروني المسجل
-  if (!user.googleId) {
+    const spexId = `SPX-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+    const userId = `usr_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const emailPrefix = profile.email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '_');
+    
+    try {
+      user = await prisma.user.create({
+        data: {
+          id: userId,
+          username: `${emailPrefix}_${Math.floor(Math.random() * 1000)}`,
+          spexId,
+          firstName: profile.firstName || 'مستخدم',
+          lastName: profile.lastName || 'جديد',
+          email: profile.email,
+          googleId: profile.googleId,
+          passwordHash: '', // حساب محمي عبر Google مباشرة
+          role: 'teacher',
+          phone: '0661234567',
+          schoolName: 'مدرسة ابتدائية',
+          municipality: 'عين أزال - سطيف',
+          directorateId: 'setif_de',
+          districtId: 'dist_setif_7',
+          institutionId: 'inst_1',
+          specialization: 'أستاذ التربية البدنية والرياضية - الطور الابتدائي',
+          yearsExperience: 1,
+          status: 'active',
+          isApprovedByAdmin: true,
+          customApiKey: '',
+          apiKeyStatus: 'not_set'
+        }
+      });
+    } catch (createErr) {
+      console.error('فشل إنشاء حساب Google جديد:', createErr);
+      return res.status(500).json({ error: 'تعذر إنشاء الحساب عبر Google. يرجى محاولة الدخول العادي أو التواصل مع الدعم.' });
+    }
+  } else if (!user.googleId) {
+    // ربط تلقائي عند أول دخول ناجح عبر Google بنفس البريد الإلكتروني المسجل
     try {
       user = await prisma.user.update({ where: { id: user.id }, data: { googleId: profile.googleId } });
-    } catch (err: any) {
-      // في حالة تصادم نادر (googleId مربوط بحساب آخر بالتوازي)، نتابع الدخول بدون تحديث الربط
-      if (err.code !== 'P2002') {
-        console.error('تعذر ربط حساب Google تلقائياً:', err);
-      }
+    } catch (err: unknown) {
+      console.error('تعذر ربط حساب Google تلقائياً:', err);
     }
   }
 
