@@ -87,12 +87,13 @@ app.get('*', (req, res, next) => {
 
 // معالج أخطاء عام في آخر السلسلة — لا نسرّب تفاصيل الخطأ الداخلي للعميل
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('Unhandled server error:', err);
   res.status(500).json({ error: 'حدث خطأ غير متوقع في الخادم.' });
 });
 
 const PORT = Number(process.env.PORT) || 3000;
 app.listen(PORT, '0.0.0.0', () => {
+  // eslint-disable-next-line no-console
   console.log(`✅ SPEX server running on port ${PORT} (${process.env.NODE_ENV || 'development'})`);
 });

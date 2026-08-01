@@ -33,7 +33,7 @@ interface FloatingLessonOverlayProps {
   onToggleSound?: () => void;
 }
 
-export const FloatingLessonOverlay: React.FC<FloatingLessonOverlayProps> = ({
+export const FloatingLessonOverlay: React.FC<FloatingLessonOverlayProps> = React.memo(({
   session,
   timingSettings,
   onPauseResume,
@@ -262,4 +262,4 @@ export const FloatingLessonOverlay: React.FC<FloatingLessonOverlayProps> = ({
       </AnimatePresence>
     </div>
   );
-};
+});

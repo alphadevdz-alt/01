@@ -10,9 +10,9 @@
     "seed": "tsx prisma/seed.ts"
   },
   "scripts": {
-    "dev": "vite --port=3000 --host=0.0.0.0",
-    "build": "vite build",
-    "start": "prisma migrate deploy && tsx prisma/seed.ts && tsx src/server/index.ts",
+    "dev": "tsx server.ts",
+    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "start": "node dist/server.cjs",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit && eslint .",

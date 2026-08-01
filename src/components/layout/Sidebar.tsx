@@ -61,7 +61,7 @@ interface SidebarProps {
   onOpenMobile?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({
+export const Sidebar: React.FC<SidebarProps> = React.memo(({
   currentTab,
   onSelectTab,
   userRole,
@@ -434,4 +434,4 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
     </>
   );
-};
+});

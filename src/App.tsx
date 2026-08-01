@@ -3,32 +3,40 @@
  * Application Entry Point & Core State Controller
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { Header } from './components/layout/Header';
 import { Sidebar, NavTab } from './components/layout/Sidebar';
-import { TeacherDashboard } from './components/dashboard/TeacherDashboard';
-import { InspectorDashboard } from './components/dashboard/InspectorDashboard';
-import { DirectorDashboard } from './components/dashboard/DirectorDashboard';
-import { AdminDashboard } from './components/dashboard/AdminDashboard';
 import { AuthScreen } from './components/auth/AuthScreen';
 import { LandingScreen } from './components/landing/LandingScreen';
 import { PendingApprovalViewerScreen } from './components/auth/PendingApprovalViewerScreen';
-import { AnnualPlanView } from './components/curriculum/AnnualPlanView';
-import { AnnualScheduleView } from './components/curriculum/AnnualScheduleView';
-import { WeeklyScheduleView } from './components/schedule/WeeklyScheduleView';
-import { LearningSegmentsView } from './components/curriculum/LearningSegmentsView';
-import { DailyNotebookView } from './components/notebook/DailyNotebookView';
-import { LessonPlanView } from './components/lesson/LessonPlanView';
-import { KnowledgeEngineView } from './components/knowledge/KnowledgeEngineView';
-import { CompetencyAssessmentView } from './components/assessment/CompetencyAssessmentView';
-import { GradebookView } from './components/gradebook/GradebookView';
-import { ReportsView } from './components/reports/ReportsView';
-import { SettingsView } from './components/settings/SettingsView';
-import { DistrictChatView } from './components/chat/DistrictChatView';
-import { ProfessionalCommunityView } from './components/community/ProfessionalCommunityView';
-import { AIAssistantDrawer } from './components/ai/AIAssistantDrawer';
-import { LessonCommandCenterView } from './components/lesson/LessonCommandCenterView';
 import { FloatingLessonOverlay } from './components/lesson/FloatingLessonOverlay';
+
+const TeacherDashboard = lazy(() => import('./components/dashboard/TeacherDashboard').then((m) => ({ default: m.TeacherDashboard })));
+const InspectorDashboard = lazy(() => import('./components/dashboard/InspectorDashboard').then((m) => ({ default: m.InspectorDashboard })));
+const DirectorDashboard = lazy(() => import('./components/dashboard/DirectorDashboard').then((m) => ({ default: m.DirectorDashboard })));
+const AdminDashboard = lazy(() => import('./components/dashboard/AdminDashboard').then((m) => ({ default: m.AdminDashboard })));
+const AnnualPlanView = lazy(() => import('./components/curriculum/AnnualPlanView').then((m) => ({ default: m.AnnualPlanView })));
+const AnnualScheduleView = lazy(() => import('./components/curriculum/AnnualScheduleView').then((m) => ({ default: m.AnnualScheduleView })));
+const WeeklyScheduleView = lazy(() => import('./components/schedule/WeeklyScheduleView').then((m) => ({ default: m.WeeklyScheduleView })));
+const LearningSegmentsView = lazy(() => import('./components/curriculum/LearningSegmentsView').then((m) => ({ default: m.LearningSegmentsView })));
+const DailyNotebookView = lazy(() => import('./components/notebook/DailyNotebookView').then((m) => ({ default: m.DailyNotebookView })));
+const LessonPlanView = lazy(() => import('./components/lesson/LessonPlanView').then((m) => ({ default: m.LessonPlanView })));
+const KnowledgeEngineView = lazy(() => import('./components/knowledge/KnowledgeEngineView').then((m) => ({ default: m.KnowledgeEngineView })));
+const CompetencyAssessmentView = lazy(() => import('./components/assessment/CompetencyAssessmentView').then((m) => ({ default: m.CompetencyAssessmentView })));
+const GradebookView = lazy(() => import('./components/gradebook/GradebookView').then((m) => ({ default: m.GradebookView })));
+const ReportsView = lazy(() => import('./components/reports/ReportsView').then((m) => ({ default: m.ReportsView })));
+const SettingsView = lazy(() => import('./components/settings/SettingsView').then((m) => ({ default: m.SettingsView })));
+const DistrictChatView = lazy(() => import('./components/chat/DistrictChatView').then((m) => ({ default: m.DistrictChatView })));
+const ProfessionalCommunityView = lazy(() => import('./components/community/ProfessionalCommunityView').then((m) => ({ default: m.ProfessionalCommunityView })));
+const AIAssistantDrawer = lazy(() => import('./components/ai/AIAssistantDrawer').then((m) => ({ default: m.AIAssistantDrawer })));
+const LessonCommandCenterView = lazy(() => import('./components/lesson/LessonCommandCenterView').then((m) => ({ default: m.LessonCommandCenterView })));
+
+const ViewFallback = () => (
+  <div className="flex flex-col items-center justify-center min-h-[400px] w-full p-8 text-slate-500 space-y-3">
+    <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
+    <p className="text-sm font-medium text-slate-600">جارٍ تحميل الواجهة...</p>
+  </div>
+);
 import {
   syncUserToDB,
   deleteUserFromDB,
@@ -1124,6 +1132,7 @@ export default function App() {
 
         {/* View Content Canvas Area */}
         <main className="flex-1 p-3 sm:p-5 lg:p-8 pb-20 md:pb-8 overflow-y-auto max-h-[calc(100vh-60px)]">
+          <Suspense fallback={<ViewFallback />}>
           {activeTab === 'dashboard' && (
             <TeacherDashboard
               user={currentUser}
@@ -1367,6 +1376,7 @@ export default function App() {
           {activeTab === 'settings' && (
             <SettingsView currentUser={currentUser} onUpdateUser={handleUpdateUser} />
           )}
+          </Suspense>
         </main>
       </div>
 
@@ -1408,7 +1418,9 @@ export default function App() {
       )}
 
       {/* Floating AI Pedagogical Assistant Drawer */}
-      <AIAssistantDrawer isOpen={isAIAssistantOpen} onClose={() => setIsAIAssistantOpen(false)} />
+      <Suspense fallback={null}>
+        <AIAssistantDrawer isOpen={isAIAssistantOpen} onClose={() => setIsAIAssistantOpen(false)} />
+      </Suspense>
     </div>
   );
 }

@@ -51,7 +51,7 @@ type SearchResultItem = {
   targetTab: string;
 };
 
-export const Header: React.FC<HeaderProps> = ({
+export const Header: React.FC<HeaderProps> = React.memo(({
   currentUser,
   allUsers,
   onSwitchUser,
@@ -417,4 +417,4 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
     </header>
   );
-};
+});

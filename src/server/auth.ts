@@ -72,18 +72,23 @@ export function getSessionTokenFromRequest(req: Request): string | undefined {
 // حقول لا يجب أبداً أن تغادر الخادم باتجاه العميل عند عرض حساب مستخدم آخر
 // (customApiKey سرّ خاص بصاحبه فقط - لا يجوز أن يراه بقية المستخدمين، بمن فيهم admin/inspector،
 // عبر قوائم المستخدمين أو أي استجابة تخص حساباً غير حساب صاحب الطلب نفسه)
-export function sanitizeUser<T extends Record<string, any>>(
+export function sanitizeUser<T extends Record<string, unknown>>(
   user: T
 ): Omit<T, 'passwordHash' | 'password' | 'customApiKey'> {
-  const { passwordHash, password, customApiKey, ...safe } = user as any;
-  return safe;
+  const safe = { ...user };
+  delete (safe as Record<string, unknown>).passwordHash;
+  delete (safe as Record<string, unknown>).password;
+  delete (safe as Record<string, unknown>).customApiKey;
+  return safe as Omit<T, 'passwordHash' | 'password' | 'customApiKey'>;
 }
 
 // نسخة "حسابي الشخصي" فقط: تُستخدم حصراً عند إعادة بيانات صاحب الطلب نفسه
 // (تسجيل الدخول، /me، التسجيل...) حيث يحتاج العميل لاسترجاع مفتاحه الخاص الذي أدخله بنفسه
-export function sanitizeOwnUser<T extends Record<string, any>>(user: T): Omit<T, 'passwordHash' | 'password'> {
-  const { passwordHash, password, ...safe } = user as any;
-  return safe;
+export function sanitizeOwnUser<T extends Record<string, unknown>>(user: T): Omit<T, 'passwordHash' | 'password'> {
+  const safe = { ...user };
+  delete (safe as Record<string, unknown>).passwordHash;
+  delete (safe as Record<string, unknown>).password;
+  return safe as Omit<T, 'passwordHash' | 'password'>;
 }
 
 // -----------------------------------------------------------------------

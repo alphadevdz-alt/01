@@ -211,7 +211,14 @@ function jsonCollectionRoutes(opts: {
   }
 
   apiRouter.get(`/db/${path}`, async (req, res) => {
-    const rows = await model.findMany({ orderBy: { createdAt: 'desc' } });
+    const limit = req.query.limit ? Math.min(Math.max(Number(req.query.limit), 1), 500) : undefined;
+    const offset = req.query.offset ? Math.max(Number(req.query.offset), 0) : undefined;
+
+    const rows = await model.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      skip: offset,
+    });
     const visible = visibleTo ? rows.filter((r: any) => visibleTo(r, req.user!)) : rows;
     res.json({ success: true, [listKey]: visible.map((r: any) => ({ ...r.data, id: r.id })) });
   });

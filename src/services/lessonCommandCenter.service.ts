@@ -2,7 +2,7 @@
  * SPEX - Lesson Command Center Service
  * المنطق الخاص بصفارة الصوت، توليد الفرق، وإدارة المراحل والتقارير
  */
-import { Student, LessonSessionTiming } from '../types/spex';
+import { Student } from '../types/spex';
 
 export function playWhistleSound(
   type: 'short' | 'double' | 'long' | 'chime' = 'short',
@@ -10,7 +10,7 @@ export function playWhistleSound(
 ) {
   if (!soundEnabled) return;
   try {
-    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!AudioCtx) return;
     const ctx = new AudioCtx();
 

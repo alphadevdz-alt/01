@@ -1,6 +1,6 @@
 {
-  "name": "Remix NexSpace",
-  "description": "An instant, build-free coding environment to develop and run your projects directly in the cloud.",
+  "name": "SPEX - منصة التربية البدنية والرياضية",
+  "description": "منصة بيداغوجية رقمية متكاملة لأساتذة ومفتشي التربية البدنية والرياضية في الجزائر",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

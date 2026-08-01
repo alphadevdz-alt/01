@@ -1,0 +1,124 @@
+/**
+ * SPEX - Unified Server Entry Point
+ * خادم موحّد للإنتاج والتطوير: يدمج Express + Vite Middleware مع حماية وأداء عالٍ
+ */
+import 'dotenv/config';
+import path from 'path';
+import { execSync } from 'child_process';
+import express from 'express';
+import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
+import rateLimit from 'express-rate-limit';
+import { createServer as createViteServer } from 'vite';
+
+import { apiRouter } from './src/server/apiRouter.js';
+import { authRouter } from './src/server/authRouter.js';
+import { assignmentRouter } from './src/server/assignmentRouter.js';
+import { requireAuth } from './src/server/middleware/requireAuth.js';
+
+const rootDir = process.cwd();
+
+// Safe database migration on startup if Postgres DATABASE_URL is provided
+if (process.env.DATABASE_URL) {
+  try {
+    console.log('⚡ SPEX DB: Running Prisma migrations...');
+    execSync('npx prisma migrate deploy', { stdio: 'inherit' });
+    console.log('🌱 SPEX DB: Seeding initial data...');
+    execSync('npx tsx prisma/seed.ts', { stdio: 'inherit' });
+  } catch (err) {
+    console.warn('⚠️ SPEX DB Migration/Seed notice:', (err as Error).message || err);
+  }
+}
+
+async function startServer() {
+  const app = express();
+  const PORT = Number(process.env.PORT) || 3000;
+
+  app.set('trust proxy', 1);
+
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+    })
+  );
+  app.use(cookieParser());
+  app.use(express.json({ limit: '2mb' }));
+
+  // Rate Limiting
+  const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'محاولات دخول كثيرة جداً، يرجى المحاولة بعد قليل.' },
+  });
+  app.use('/api/auth/login', loginLimiter);
+
+  const forgotPasswordLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'طلبات كثيرة جداً لإعادة تعيين كلمة المرور، يرجى المحاولة بعد قليل.' },
+  });
+  app.use('/api/auth/forgot-password', forgotPasswordLimiter);
+
+  const bootstrapLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'محاولات كثيرة جداً، يرجى المحاولة بعد قليل.' },
+  });
+  app.use('/api/auth/bootstrap-admin', bootstrapLimiter);
+
+  const googleAuthLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'محاولات دخول عبر Google كثيرة جداً، يرجى المحاولة بعد قليل.' },
+  });
+  app.use('/api/auth/google', googleAuthLimiter);
+
+  const apiLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    limit: 120,
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+  app.use('/api', apiLimiter);
+
+  // API Routes
+  app.use('/api/auth', authRouter);
+  app.use('/api', apiRouter);
+  app.use('/api', requireAuth, assignmentRouter);
+
+  // Frontend Serving (Vite dev middleware vs Production static)
+  if (process.env.NODE_ENV !== 'production') {
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: 'spa',
+    });
+    app.use(vite.middlewares);
+  } else {
+    const distPath = path.resolve(rootDir, 'dist');
+    app.use(express.static(distPath));
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api')) return next();
+      res.sendFile(path.join(distPath, 'index.html'));
+    });
+  }
+
+  // Error Handler
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error('Unhandled server error:', err);
+    res.status(500).json({ error: 'حدث خطأ غير متوقع في الخادم.' });
+  });
+
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`✅ SPEX server running on port ${PORT} (${process.env.NODE_ENV || 'development'})`);
+  });
+}
+
+startServer();
