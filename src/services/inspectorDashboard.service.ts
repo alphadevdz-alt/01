@@ -8,6 +8,7 @@ import {
   InspectorNote,
   InspectionVisit,
   LessonPlan,
+  DistrictBroadcast,
 } from '../types/spex';
 import { LATE_REPORT_THRESHOLD_DAYS } from '../constants/inspectorDashboard.constants';
 
@@ -22,7 +23,7 @@ export interface InspectorGlobalStats {
 
 export interface ActivityFeedItem {
   id: string;
-  icon: 'note' | 'visit' | 'lesson_plan' | 'notebook';
+  icon: 'note' | 'visit' | 'broadcast' | 'lesson_plan' | 'notebook';
   title: string;
   subtitle: string;
   date: string;
@@ -33,7 +34,8 @@ export function computeInspectorGlobalStats(
   dailyNotebook: DailyNotebookEntry[],
   notes: InspectorNote[],
   visits: InspectionVisit[],
-  lessonPlans: LessonPlan[]
+  lessonPlans: LessonPlan[],
+  broadcasts: DistrictBroadcast[] = []
 ): InspectorGlobalStats {
   // 1. المؤسسات المشرف عليها
   const institutionNames = Array.from(
@@ -81,46 +83,37 @@ export function computeInspectorGlobalStats(
     .sort((a, b) => b.count - a.count)
     .slice(0, 8);
 
-  // 6. آخر النشاطات
+  // 6. آخر النشاطات الصادرة من المفتش حصراً
   const recentActivities: ActivityFeedItem[] = [
     ...notes.map((n) => ({
       id: `note_${n.id}`,
       icon: 'note' as const,
       title: n.title,
-      subtitle: `ملاحظة إلى الأستاذ ${n.teacherName}`,
+      subtitle: `توجيه موجه إلى الأستاذ: ${n.teacherName}`,
       date: n.createdAt,
     })),
     ...visits.map((v) => {
       const t = teachers.find((tt) => tt.id === v.teacherId);
+      const tName = t ? `${t.firstName} ${t.lastName}` : (v.teacherId || 'الأستاذ');
       return {
         id: `visit_${v.id}`,
         icon: 'visit' as const,
-        title: v.lessonObservedTitle,
-        subtitle: `زيارة ${v.visitType} — الأستاذ ${t ? `${t.firstName} ${t.lastName}` : ''}`,
-        date: v.visitDate,
+        title: v.lessonObservedTitle || `زيارة تفقدية (${v.visitType})`,
+        subtitle: `زيارة رسمية بتقدير ${v.pedagogicalGrade || 16}/20 — الأستاذ ${tName}`,
+        date: v.visitDate || v.createdAt || new Date().toISOString(),
       };
     }),
-    ...(lessonPlans || []).map((lp) => ({
-      id: `lp_${lp.id}`,
-      icon: 'lesson_plan' as const,
-      title: lp.sessionTitle,
-      subtitle: `مذكرة حصة جديدة — الأستاذ ${lp.teacherName}`,
-      date: lp.createdAt,
+    ...(broadcasts || []).map((bc) => ({
+      id: `bc_${bc.id}`,
+      icon: 'broadcast' as const,
+      title: bc.title,
+      subtitle: `منشور توجيهي — ${bc.inspectorName || 'المفتش البيداغوجي'}`,
+      date: bc.createdAt,
     })),
-    ...(dailyNotebook || []).map((nb) => {
-      const t = teachers.find((tt) => tt.id === nb.teacherId);
-      return {
-        id: `nb_${nb.id}`,
-        icon: 'notebook' as const,
-        title: `${nb.className} — ${nb.status}`,
-        subtitle: `تسجيل يوميات — الأستاذ ${t ? `${t.firstName} ${t.lastName}` : ''}`,
-        date: nb.executionDate,
-      };
-    }),
   ]
     .filter((item) => item.date && !Number.isNaN(new Date(item.date).getTime()))
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 8);
+    .slice(0, 10);
 
   return {
     institutionsCount,

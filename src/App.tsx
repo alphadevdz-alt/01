@@ -215,11 +215,13 @@ export default function App() {
 
   const [broadcasts, setBroadcasts] = useState(INITIAL_BROADCASTS);
   const [directMessages, setDirectMessages] = useState<DirectChatMessage[]>(() => {
-    if (!currentUser?.id) return [];
-    const isDemo = currentUser.id === 'usr_admin_1';
-    const saved = localStorage.getItem(`spex_direct_messages_${currentUser.id}`);
-    if (saved) { try { return JSON.parse(saved); } catch (e) { void e; } }
-    return isDemo ? INITIAL_DIRECT_MESSAGES : [];
+    const savedShared = localStorage.getItem('spex_direct_messages_shared');
+    if (savedShared) { try { return JSON.parse(savedShared); } catch (e) { void e; } }
+    if (currentUser?.id) {
+      const savedUser = localStorage.getItem(`spex_direct_messages_${currentUser.id}`);
+      if (savedUser) { try { return JSON.parse(savedUser); } catch (e) { void e; } }
+    }
+    return INITIAL_DIRECT_MESSAGES;
   });
 
   const [communityResources, setCommunityResources] = useState<CommunityResource[]>(() => {
@@ -485,6 +487,16 @@ export default function App() {
             return Array.from(map.values());
           });
         }
+
+        const dbDirectMsgs = await fetchDirectMessagesFromDB();
+        if (dbDirectMsgs && dbDirectMsgs.length > 0) {
+          setDirectMessages((prev) => {
+            const map = new Map();
+            prev.forEach((m) => map.set(m.id, m));
+            dbDirectMsgs.forEach((m: any) => map.set(m.id, m));
+            return Array.from(map.values());
+          });
+        }
       } catch (e) {
         console.warn('Initial DB load error:', e);
       }
@@ -493,9 +505,48 @@ export default function App() {
     loadDBData();
   }, [isAuthenticated]);
 
-  // Auto-Save effects to LocalStorage and Platform DB for full persistence
+  // Real-time chat polling & cross-tab sync
+  useEffect(() => {
+    if (!isAuthenticated) return;
 
-  // Auto-Save effects to LocalStorage and Platform DB for full persistence per User ID
+    const syncDirectMessages = async () => {
+      try {
+        const dbDirectMsgs = await fetchDirectMessagesFromDB();
+        if (dbDirectMsgs && dbDirectMsgs.length > 0) {
+          setDirectMessages((prev) => {
+            const map = new Map();
+            prev.forEach((m) => map.set(m.id, m));
+            dbDirectMsgs.forEach((m: any) => map.set(m.id, m));
+            if (map.size === prev.length) return prev;
+            return Array.from(map.values());
+          });
+        }
+      } catch (e) {
+        void e;
+      }
+    };
+
+    const interval = setInterval(syncDirectMessages, 2500);
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'spex_direct_messages_shared' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed)) setDirectMessages(parsed);
+        } catch (err) {
+          void err;
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [isAuthenticated]);
+
+  // Auto-Save effects to LocalStorage and Platform DB for full persistence
 
   useEffect(() => {
     if (currentUser && isAuthenticated) {
@@ -505,8 +556,11 @@ export default function App() {
   }, [currentUser, isAuthenticated]);
 
   useEffect(() => {
-    if (currentUser?.id) {
-      localStorage.setItem(`spex_direct_messages_${currentUser.id}`, JSON.stringify(directMessages));
+    if (directMessages.length > 0) {
+      localStorage.setItem('spex_direct_messages_shared', JSON.stringify(directMessages));
+      if (currentUser?.id) {
+        localStorage.setItem(`spex_direct_messages_${currentUser.id}`, JSON.stringify(directMessages));
+      }
     }
   }, [directMessages, currentUser?.id]);
 
@@ -1097,6 +1151,7 @@ export default function App() {
               dailyNotebook={dailyNotebook}
               lessonPlans={lessonPlans}
               inspectorNotes={inspectorNotes}
+              inspectionVisits={inspectionVisits}
               onNavigateTab={(t) => setCurrentTab(t)}
               onOpenAIGenerator={() => setCurrentTab('lesson_plans')}
               onUpdateNotebookStatus={handleUpdateNotebookStatus}

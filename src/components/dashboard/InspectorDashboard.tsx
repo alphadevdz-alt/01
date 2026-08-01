@@ -99,7 +99,8 @@ export const InspectorDashboard: React.FC<InspectorDashboardProps> = ({
     dailyNotebook,
     notes,
     visits,
-    lessonPlans
+    lessonPlans,
+    broadcasts
   );
 
   // 2. Selected Teacher Details
@@ -138,26 +139,16 @@ export const InspectorDashboard: React.FC<InspectorDashboardProps> = ({
   };
 
   const handleSendDirectMessage = (text: string) => {
-    const newMsg: DirectChatMessage = {
-      id: `chat_${Date.now()}`,
-      senderId: inspector.id,
-      senderName: `المفتش ${inspector.firstName} ${inspector.lastName}`,
-      senderRole: 'inspector',
-      receiverId: selectedTeacher?.id || teachers[0]?.id || 'usr_teacher_1',
-      receiverName: selectedTeacher
-        ? `${selectedTeacher.firstName} ${selectedTeacher.lastName}`
-        : 'أستاذ المادة',
-      districtId: inspector.districtId || 'dist_1',
-      message: text,
-      createdAt: new Date().toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' }),
-    };
+    const targetTeacher = selectedTeacher || teachers[0];
+    const receiverId = targetTeacher?.id || 'usr_teacher_1';
+    const receiverName = targetTeacher
+      ? `${targetTeacher.firstName} ${targetTeacher.lastName}`
+      : 'أستاذ المادة';
 
-    setLocalChatMessages((prev) => [...prev, newMsg]);
-
-    if (onAddDirectMessage && selectedTeacher) {
+    if (onAddDirectMessage) {
       onAddDirectMessage({
-        receiverId: selectedTeacher.id,
-        receiverName: `${selectedTeacher.firstName} ${selectedTeacher.lastName}`,
+        receiverId,
+        receiverName,
         message: text,
       });
     }
@@ -308,8 +299,8 @@ export const InspectorDashboard: React.FC<InspectorDashboardProps> = ({
         <div className="animate-in fade-in duration-200">
           <InspectorDirectChat
             inspector={inspector}
-            selectedTeacher={selectedTeacher}
-            chatMessages={localChatMessages}
+            selectedTeacher={selectedTeacher || teachers[0]}
+            chatMessages={directMessages}
             onSendMessage={handleSendDirectMessage}
           />
         </div>

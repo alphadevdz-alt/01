@@ -332,6 +332,7 @@ export interface DirectChatMessage {
   timestamp?: string;
   createdAt: string;
   read?: boolean;
+  archived?: boolean;
 }
 
 export interface Directorate {
@@ -704,6 +705,7 @@ export interface InspectionVisit {
   areasForImprovement: string[];
   recommendations: string[];
   officialReportGenerated: boolean;
+  createdAt?: string;
 }
 
 // AI Engine Settings & Logs

@@ -343,7 +343,7 @@ jsonCollectionRoutes({
   visibleTo: (row, user) => user.role === 'admin' || (row.data as Record<string, unknown>)?.districtId === user.districtId
 });
 
-// 6. Direct Messages — خاصة بطرفي المحادثة فقط (المُرسل والمُستقبِل)
+// 6. Direct Messages — خاصة بطرفي المحادثة (المُرسل والمُستقبِل) والمفتش والمسؤول
 jsonCollectionRoutes({
   path: 'direct-messages',
   model: prisma.directMessage,
@@ -351,7 +351,12 @@ jsonCollectionRoutes({
   listKey: 'directMessages',
   batchBodyKey: 'directMessages',
   ownerField: 'senderId',
-  visibleTo: (row, user) => row.senderId === user.id || (row.data as Record<string, unknown>)?.receiverId === user.id
+  ownerAssignedByServer: false,
+  visibleTo: (row, user) =>
+    user.role === 'admin' ||
+    user.role === 'inspector' ||
+    row.senderId === user.id ||
+    (row.data as Record<string, unknown>)?.receiverId === user.id
 });
 
 // 7. Community Resources — محتوى عام مشترك، يبقى مرئياً للجميع كما هو مصمَّم

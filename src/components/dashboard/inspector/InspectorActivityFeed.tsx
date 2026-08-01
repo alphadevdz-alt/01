@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, AlertTriangle, FileText, Send, Award, Clock } from 'lucide-react';
+import { Activity, AlertTriangle, FileText, Send, Award, Clock, Megaphone } from 'lucide-react';
 import { User } from '../../../types/spex';
 import { ActivityFeedItem } from '../../../services/inspectorDashboard.service';
 
@@ -29,38 +29,49 @@ export const InspectorActivityFeed: React.FC<InspectorActivityFeedProps> = ({
             </div>
             <div>
               <h3 className="text-sm font-extrabold text-slate-900">سجل نشاطات المقاطعة المباشرة</h3>
-              <p className="text-[10px] text-slate-500 font-bold">آخر تحديثات الأساتذة والملاحظات البيداغوجية</p>
+              <p className="text-[10px] text-slate-500 font-bold">الأنشطة الصادرة المباشرة من المفتش البيداغوجي</p>
             </div>
           </div>
           <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-2.5 py-1 rounded-full">
-            {recentActivities.length} نشاطات حديثة
+            {recentActivities.length} نشاطات الصادرة
           </span>
         </div>
 
-        <div className="space-y-2.5">
-          {recentActivities.map((act) => (
-            <div
-              key={act.id}
-              className="p-3 bg-slate-50/80 hover:bg-slate-100/80 rounded-2xl transition-colors border border-slate-100 flex items-center justify-between gap-3 text-xs"
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-white shadow-2xs text-emerald-600 border border-slate-100">
-                  {act.icon === 'note' && <Send className="w-3.5 h-3.5 text-blue-600" />}
-                  {act.icon === 'visit' && <Award className="w-3.5 h-3.5 text-emerald-600" />}
-                  {act.icon === 'lesson_plan' && <FileText className="w-3.5 h-3.5 text-purple-600" />}
-                  {act.icon === 'notebook' && <Clock className="w-3.5 h-3.5 text-amber-600" />}
+        {recentActivities.length > 0 ? (
+          <div className="space-y-2.5">
+            {recentActivities.map((act) => (
+              <div
+                key={act.id}
+                className="p-3 bg-slate-50/80 hover:bg-slate-100/80 rounded-2xl transition-colors border border-slate-100 flex items-center justify-between gap-3 text-xs"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-white shadow-2xs text-emerald-600 border border-slate-100">
+                    {act.icon === 'note' && <Send className="w-3.5 h-3.5 text-blue-600" />}
+                    {act.icon === 'visit' && <Award className="w-3.5 h-3.5 text-emerald-600" />}
+                    {act.icon === 'broadcast' && <Megaphone className="w-3.5 h-3.5 text-amber-600" />}
+                    {act.icon === 'lesson_plan' && <FileText className="w-3.5 h-3.5 text-purple-600" />}
+                    {act.icon === 'notebook' && <Clock className="w-3.5 h-3.5 text-slate-600" />}
+                  </div>
+                  <div>
+                    <span className="font-extrabold text-slate-900 block">{act.title}</span>
+                    <span className="text-[10px] text-slate-500 font-medium">{act.subtitle}</span>
+                  </div>
                 </div>
-                <div>
-                  <span className="font-extrabold text-slate-900 block">{act.title}</span>
-                  <span className="text-[10px] text-slate-500 font-medium">{act.subtitle}</span>
-                </div>
+                <span className="text-[10px] text-slate-400 font-bold whitespace-nowrap dir-ltr">
+                  {act.date ? new Date(act.date).toLocaleDateString('ar-DZ') : ''}
+                </span>
               </div>
-              <span className="text-[10px] text-slate-400 font-bold whitespace-nowrap dir-ltr">
-                {act.date ? new Date(act.date).toLocaleDateString('ar-DZ') : ''}
-              </span>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="py-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 p-4 space-y-1.5">
+            <Activity className="w-8 h-8 text-slate-300 mx-auto" />
+            <p className="text-xs font-bold text-slate-700">سجل نشاطات المقاطعة المباشرة فارغ حالياً</p>
+            <p className="text-[10px] text-slate-500 max-w-sm mx-auto">
+              تظهر الأنشطة هنا حواً وبشكل مباشر فور إرسال المفتش البيداغوجي لملاحظة، تسجيل زيارة تفقدية، أو نشر منشور توجيهي.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* 2. Alerts & Late Reports */}

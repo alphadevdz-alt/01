@@ -5,6 +5,7 @@ import {
   InspectorNote,
   InspectionVisit,
   LessonPlan,
+  DistrictBroadcast,
 } from '../types/spex';
 import {
   computeInspectorGlobalStats,
@@ -16,10 +17,11 @@ export function useInspectorDashboardStats(
   dailyNotebook: DailyNotebookEntry[],
   notes: InspectorNote[],
   visits: InspectionVisit[],
-  lessonPlans: LessonPlan[]
+  lessonPlans: LessonPlan[],
+  broadcasts: DistrictBroadcast[] = []
 ): InspectorGlobalStats {
   return useMemo(
-    () => computeInspectorGlobalStats(teachers, dailyNotebook, notes, visits, lessonPlans),
-    [teachers, dailyNotebook, notes, visits, lessonPlans]
+    () => computeInspectorGlobalStats(teachers, dailyNotebook, notes, visits, lessonPlans, broadcasts),
+    [teachers, dailyNotebook, notes, visits, lessonPlans, broadcasts]
   );
 }

@@ -88,28 +88,7 @@ export const DEMO_USERS: User[] = [
   }
 ];
 
-export const INITIAL_BROADCASTS: DistrictBroadcast[] = [
-  {
-    id: 'bc_1',
-    inspectorId: 'usr_inspector_1',
-    inspectorName: 'المفتش مصطفى رواق',
-    districtId: 'dist_setif_7',
-    title: 'دعوة لحضور الندوة البيداغوجية الافتتاحية لمفتشية المقاطعة 07 - عين أزال',
-    content: 'نهيب بجميع أساتذة التربية البدنية والرياضية للتعليم الابتدائي بالمقاطعة 07 (عين أزال) الحضور للندوة البيداغوجية يوم الخميس القادم لمناقشة آليات تنفيذ الدفاتر البيداغوجية الرقمية والمنهاج الوزاري.',
-    category: 'دعوة_اجتماع',
-    createdAt: '2026-07-25T09:00:00Z'
-  },
-  {
-    id: 'bc_2',
-    inspectorId: 'usr_inspector_1',
-    inspectorName: 'المفتش مصطفى رواق',
-    districtId: 'dist_setif_7',
-    title: 'توجيه بيداغوجي: تفعيل دفتر البلديات التربوية وإعفاءات التربية البدنية',
-    content: 'نرجو من جميع الأساتذة الحرص على تقسيم تلاميذ كل قسم إلى ناديين أ و ب (البلدية التربوية)، وتسجيل الشهادات الطبية بالدفتر المخصص لذلك.',
-    category: 'توجيه_بيداغوجي',
-    createdAt: '2026-07-24T14:30:00Z'
-  }
-];
+export const INITIAL_BROADCASTS: DistrictBroadcast[] = [];
 
 export const INITIAL_DIRECT_MESSAGES: DirectChatMessage[] = [
   {
@@ -202,77 +181,10 @@ export const INITIAL_LESSON_PLANS: LessonPlan[] = [];
 export const INITIAL_ASSESSMENT_SESSIONS: CompetencyAssessmentSession[] = [];
 
 // Initial Inspector Notes (توجيهات وإشعارات المفتش البيداغوجي للابتدائي)
-export const INITIAL_INSPECTOR_NOTES: InspectorNote[] = [
-  {
-    id: 'note_1',
-    inspectorId: 'usr_inspector_1',
-    inspectorName: 'المفتش مصطفى رواق',
-    teacherId: 'usr_teacher_1',
-    teacherName: 'عبد المالك نابتي',
-    moduleRef: 'lesson_plan',
-    title: 'توجيه بيداغوجي حول ملاءمة الألعاب التمهيدية لسن تلاميذ الابتدائي',
-    content: 'أستاذ عبد المالك، لوحظ تحكم ممتاز في إعداد مذكرة الحصة، نوصي باستمرار استخدام الأقماع الملونة والكرات الإسفنجية الخفيفة لرفع جاذبية التعلم لدى أطفال المرحلة الابتدائية.',
-    priority: 'هام',
-    status: 'جديدة',
-    createdAt: '2026-07-23T10:15:00Z',
-    updatedAt: '2026-07-23T10:15:00Z'
-  },
-  {
-    id: 'note_2',
-    inspectorId: 'usr_inspector_1',
-    inspectorName: 'المفتش مصطفى رواق',
-    teacherId: 'usr_teacher_1',
-    teacherName: 'عبد المالك نابتي',
-    moduleRef: 'seminar_invitation',
-    title: 'دعوة رسمية لحضور ندوة تربوية حول المناهج الحديثة في التربية البدنية',
-    content: 'يشرفنا دعوتكم لحضور الندوة التربوية المقررة يوم الخميس القادم بمجمع الابتدائيات، للتكفل بالمستجدات البيداغوجية وطرق تقويم الكفاءات الختامية.',
-    priority: 'مستعجل',
-    status: 'جديدة',
-    createdAt: '2026-07-24T09:00:00Z',
-    updatedAt: '2026-07-24T09:00:00Z'
-  },
-  {
-    id: 'note_3',
-    inspectorId: 'usr_inspector_1',
-    inspectorName: 'المفتش مصطفى رواق',
-    teacherId: 'usr_teacher_1',
-    teacherName: 'عبد المالك نابتي',
-    moduleRef: 'visit_alert',
-    title: 'تنبيه بزيارة تفقدية وتوجيهية مرتقبة',
-    content: 'ننهي إلى علمكم أنه تم برمجت زيارة تفقدية لبحث سيرورة الكراس اليومي وتطبيق المخطط السنوي لبناء التعلمات خلال الأسبوع المقبل.',
-    priority: 'هام',
-    status: 'جديدة',
-    createdAt: '2026-07-24T11:30:00Z',
-    updatedAt: '2026-07-24T11:30:00Z'
-  }
-];
+export const INITIAL_INSPECTOR_NOTES: InspectorNote[] = [];
 
 // Initial Inspection Visit Logs
-export const INITIAL_INSPECTION_VISITS: InspectionVisit[] = [
-  {
-    id: 'visit_1',
-    inspectorId: 'usr_inspector_1',
-    teacherId: 'usr_teacher_1',
-    institutionId: 'inst_1',
-    visitDate: '2026-07-15',
-    visitType: 'متابعة دورية',
-    lessonObservedTitle: 'الألعاب الحركية والجري السريع الموجه',
-    pedagogicalGrade: 17.0,
-    positivePoints: [
-      'تحكم عالي في ضبط التلاميذ في ساحة المدرسة الابتدائي',
-      'استخدام وسائل إيضاح وأقماع ملونة ممتعة للأطفال',
-      'التأكيد الدائم على قواعد السلامة والأمان'
-    ],
-    areasForImprovement: [
-      'تنويع زوايا الوقوف أثناء إعطاء التعليمات الصوتية للأطفال',
-      'زيادة تشجيع التلاميذ الخجولين حركياً'
-    ],
-    recommendations: [
-      'مواصلة اعتماد منصة SPEX لتنظيم الكراس اليومي وتوليد مذكرات الابتدائي'
-    ],
-    officialReportGenerated: true
-  }
-];
+export const INITIAL_INSPECTION_VISITS: InspectionVisit[] = [];
 
 // Initial AI Settings
 export const INITIAL_AI_SETTINGS: AISetting = {
