@@ -154,7 +154,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   const [gradeRecords, setGradeRecords] = useState<Record<string, GradeRecord>>(() => {
     const key = currentUser ? `spex_grade_records_${currentUser.id}` : 'spex_grade_records';
     const saved = localStorage.getItem(key);
-    if (saved) { try { return JSON.parse(saved); } catch(e){} }
+    if (saved) { try { return JSON.parse(saved); } catch (e) { void e; } }
     return isDemo ? {
       std_1: {
         id: 'gr_1',
@@ -183,7 +183,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   const [auditLogs, setAuditLogs] = useState<GradeAuditLog[]>(() => {
     const key = currentUser ? `spex_audit_logs_${currentUser.id}` : 'spex_audit_logs';
     const saved = localStorage.getItem(key);
-    if (saved) { try { return JSON.parse(saved); } catch(e){} }
+    if (saved) { try { return JSON.parse(saved); } catch (e) { void e; } }
     return isDemo ? [
       {
         id: 'aud_1',
@@ -209,7 +209,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   const [exemptionsList, setExemptionsList] = useState<ExemptedStudent[]>(() => {
     const key = currentUser ? `spex_exemptions_${currentUser.id}` : 'spex_exemptions';
     const saved = localStorage.getItem(key);
-    if (saved) { try { return JSON.parse(saved); } catch(e){} }
+    if (saved) { try { return JSON.parse(saved); } catch (e) { void e; } }
     return isDemo ? INITIAL_EXEMPTIONS : [];
   });
   const [showAddExemptionModal, setShowAddExemptionModal] = useState<boolean>(false);

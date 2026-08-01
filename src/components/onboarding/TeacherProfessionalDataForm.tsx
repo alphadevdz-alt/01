@@ -10,13 +10,15 @@ import {
   saveTeacherProfessionalData
 } from '../../services/api';
 
+import { User } from '../../types/spex';
+
 interface Option {
   id: string;
   name: string;
 }
 
 interface TeacherProfessionalDataFormProps {
-  onCompleted: (result: { user: any; assignment: any; inspector: any }) => void;
+  onCompleted: (result: { user: User; assignment: unknown; inspector: unknown }) => void;
 }
 
 const STEPS = ['المديرية', 'البلدية', 'المؤسسة', 'المقاطعة'] as const;

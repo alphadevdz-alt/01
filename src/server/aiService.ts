@@ -30,8 +30,8 @@ export async function testGeminiApiKey(apiKey: string): Promise<{ valid: boolean
       return { valid: true, message: '🟢 تم التحقق بنجاح! المفتاح نشط وجاهز للعمل مع العميل المخصص للحساب.' };
     }
     return { valid: false, message: 'تعذر استلام رد من الخدمة.' };
-  } catch (err: any) {
-    const errorStr = String(err?.message || err);
+  } catch (err: unknown) {
+    const errorStr = err instanceof Error ? err.message : String(err);
     if (errorStr.includes('429') || errorStr.includes('RESOURCE_EXHAUSTED') || errorStr.includes('Quota exceeded')) {
       return {
         valid: false,
@@ -147,8 +147,8 @@ ${req.customEquipment ? `الوسائل المتوفرة: ${req.customEquipment}
       if (jsonText) {
         return JSON.parse(jsonText);
       }
-    } catch (err: any) {
-      const errorStr = String(err?.message || err);
+    } catch (err: unknown) {
+      const errorStr = err instanceof Error ? err.message : String(err);
       if (errorStr.includes('429') || errorStr.includes('RESOURCE_EXHAUSTED') || errorStr.includes('Quota exceeded')) {
         console.warn('Daily quota limit reached for this account/key. Falling back to local stored pedagogical bank.');
         const fallback = generateFallbackLessonPlan(req);
@@ -180,7 +180,7 @@ export async function suggestPEGames(fieldName: string, levelName: string, custo
         config: { responseMimeType: 'application/json' }
       });
       if (res.text) return JSON.parse(res.text);
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.warn('Gemini fallback for games:', e);
     }
   }
@@ -227,13 +227,13 @@ export async function generateAIChatResponse(
 
       const res = await client.models.generateContent({
         model: 'gemini-3.6-flash',
-        contents: contents as any,
+        contents,
         config: { temperature: 0.7 }
       });
 
       if (res.text) return res.text;
-    } catch (e: any) {
-      const errorStr = String(e?.message || e);
+    } catch (e: unknown) {
+      const errorStr = e instanceof Error ? e.message : String(e);
       if (errorStr.includes('429') || errorStr.includes('RESOURCE_EXHAUSTED') || errorStr.includes('Quota exceeded')) {
         return `⚠️ **ملاحظة بيداغوجية من منصة SPEX**:
 تم استنفاذ السعة اليومية المتاحة للاستعلام المباشر لهذا الحساب اليوم. يتجدد الرصيد اليومي تلقائياً غداً صباحاً.

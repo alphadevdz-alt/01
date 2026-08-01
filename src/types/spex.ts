@@ -231,7 +231,7 @@ export interface CommunityResource {
   title: string;
   description: string;
   categoryName?: string;
-  content?: any;
+  content?: unknown;
   fileUrl?: string;
   fileName?: string;
   fileType?: 'pdf' | 'word' | 'image' | 'resource';

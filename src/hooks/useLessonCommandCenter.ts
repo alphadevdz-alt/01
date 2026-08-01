@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Student, LessonSession, LessonSessionTiming } from '../types/spex';
+import { Student, LessonSession } from '../types/spex';
 import { divideStudentsIntoBalancedTeams } from '../services/lessonCommandCenter.service';
 
 export function useLessonCommandCenter(
@@ -30,15 +30,17 @@ export function useLessonCommandCenter(
 
   // Stopwatch Interval
   useEffect(() => {
-    let interval: any = null;
+    let interval: ReturnType<typeof setInterval> | null = null;
     if (isStopwatchRunning) {
       interval = setInterval(() => {
         setStopwatchTime((prev) => prev + 10);
       }, 10);
-    } else {
+    } else if (interval) {
       clearInterval(interval);
     }
-    return () => clearInterval(interval);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, [isStopwatchRunning]);
 
   const handleToggleStopwatch = () => setIsStopwatchRunning((prev) => !prev);

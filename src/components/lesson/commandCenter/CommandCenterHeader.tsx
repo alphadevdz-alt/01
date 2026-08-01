@@ -14,7 +14,7 @@ export const CommandCenterHeader: React.FC<CommandCenterHeaderProps> = ({
   timingSettings,
   onUpdateTimingSettings,
   onOpenSettingsModal,
-  isFullScreenMode,
+  isFullScreenMode: _isFullScreenMode,
   onToggleFullScreen,
 }) => {
   return (

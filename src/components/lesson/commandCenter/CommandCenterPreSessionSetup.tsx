@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Users, FileText, Zap, ShieldAlert, Sparkles } from 'lucide-react';
+import { Play, Users, FileText, Zap, ShieldAlert } from 'lucide-react';
 import { ClassRoom, LessonPlan, LessonSession } from '../../../types/spex';
 import { CONTINGENCY_MODES } from '../../../constants/lessonCommandCenter.constants';
 
@@ -11,7 +11,7 @@ interface CommandCenterPreSessionSetupProps {
   selectedLessonPlanId: string;
   onSelectLessonPlanId: (id: string) => void;
   contingencyMode: string;
-  onSelectContingencyMode: (mode: any) => void;
+  onSelectContingencyMode: (mode: string) => void;
   onStartSession: (sessionData: Omit<LessonSession, 'id'>) => void;
   onNavigateToLessonPlans: () => void;
 }

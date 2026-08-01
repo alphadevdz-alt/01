@@ -748,7 +748,7 @@ export function generateAnnualTimeDistribution(
   levelId: string = 'lvl_p1',
   startDateStr: string = '2025-09-21',
   teachingDayOfWeek: number = 0, // 0: الأحد, 1: الاثنين, 2: الثلاثاء, 3: الأربعاء, 4: الخميس
-  className: string = '1 ابتدائي 1'
+  _className: string = '1 ابتدائي 1'
 ): ScheduledAnnualSession[] {
   const levelData = COMPLETE_ANNUAL_CURRICULUM[levelId] || COMPLETE_ANNUAL_CURRICULUM['lvl_p1'];
   const scheduledSessions: ScheduledAnnualSession[] = [];

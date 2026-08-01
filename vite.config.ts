@@ -4,21 +4,23 @@ import path from 'path';
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import 'dotenv/config';
-import { defineConfig } from 'vite';
+import { defineConfig, ViteDevServer } from 'vite';
 import { apiRouter } from './src/server/apiRouter.ts';
 import { authRouter } from './src/server/authRouter.ts';
+import { assignmentRouter } from './src/server/assignmentRouter.ts';
 
 // نفس مسارات الإنتاج بالضبط (مصادقة حقيقية + Postgres عبر Prisma) تعمل أيضاً في وضع التطوير،
 // فقط موجّهة إلى قاعدة بيانات التطوير المحددة في DATABASE_URL بملف .env المحلي
 function expressApiPlugin() {
   return {
     name: 'express-api-plugin',
-    configureServer(server: any) {
+    configureServer(server: ViteDevServer) {
       const app = express();
       app.use(cookieParser());
       app.use(express.json());
       app.use('/api/auth', authRouter);
       app.use('/api', apiRouter);
+      app.use('/api', assignmentRouter);
       server.middlewares.use(app);
     }
   };

@@ -65,8 +65,9 @@ class PerformanceMonitorService {
     }
 
     // Window Sentry integration hook if available
-    if (typeof window !== 'undefined' && (window as Record<string, any>).Sentry) {
-      (window as Record<string, any>).Sentry.captureException(error, { extra: contextInfo });
+    const win = typeof window !== 'undefined' ? (window as unknown as { Sentry?: { captureException: (err: unknown, opts?: unknown) => void } }) : undefined;
+    if (win?.Sentry) {
+      win.Sentry.captureException(error, { extra: contextInfo });
     }
   }
 

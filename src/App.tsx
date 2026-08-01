@@ -144,7 +144,7 @@ export default function App() {
   // App domain state with persistent LocalStorage backup
   const [allUsersList, setAllUsersList] = useState<User[]>(() => {
     const saved = localStorage.getItem('spex_all_users');
-    if (saved) { try { return JSON.parse(saved); } catch(e){} }
+    if (saved) { try { return JSON.parse(saved); } catch (e) { void e; } }
     return DEMO_USERS;
   });
 
@@ -153,7 +153,7 @@ export default function App() {
     if (!currentUser?.id) return [];
     const isDemo = ['usr_teacher_1', 'usr_teacher_2', 'usr_teacher_3', 'usr_teacher_4', 'usr_teacher_5', 'usr_inspector_1', 'usr_admin_1'].includes(currentUser.id);
     const saved = localStorage.getItem(`spex_teacher_classes_${currentUser.id}`) || localStorage.getItem('spex_teacher_classes');
-    if (saved) { try { return JSON.parse(saved); } catch(e){} }
+    if (saved) { try { return JSON.parse(saved); } catch (e) { void e; } }
     return isDemo ? INITIAL_CLASSES : [];
   });
 
@@ -161,7 +161,7 @@ export default function App() {
     if (!currentUser?.id) return [];
     const isDemo = ['usr_teacher_1', 'usr_teacher_2', 'usr_teacher_3', 'usr_teacher_4', 'usr_teacher_5', 'usr_inspector_1', 'usr_admin_1'].includes(currentUser.id);
     const saved = localStorage.getItem(`spex_all_students_${currentUser.id}`) || localStorage.getItem('spex_all_students');
-    if (saved) { try { return JSON.parse(saved); } catch(e){} }
+    if (saved) { try { return JSON.parse(saved); } catch (e) { void e; } }
     return isDemo ? INITIAL_STUDENTS : [];
   });
 
@@ -169,13 +169,13 @@ export default function App() {
     if (!currentUser?.id) return [];
     const isDemo = ['usr_teacher_1', 'usr_teacher_2', 'usr_teacher_3', 'usr_teacher_4', 'usr_teacher_5', 'usr_inspector_1', 'usr_admin_1'].includes(currentUser.id);
     const saved = localStorage.getItem(`spex_daily_notebook_${currentUser.id}`) || localStorage.getItem('spex_daily_notebook');
-    if (saved) { try { return JSON.parse(saved); } catch(e){} }
+    if (saved) { try { return JSON.parse(saved); } catch (e) { void e; } }
     return isDemo ? INITIAL_DAILY_NOTEBOOK : [];
   });
 
   const [weeklySchedule, setWeeklySchedule] = useState<WeeklyScheduleSlot[]>(() => {
     const saved = localStorage.getItem('spex_weekly_schedule');
-    if (saved) { try { return JSON.parse(saved); } catch(e){} }
+    if (saved) { try { return JSON.parse(saved); } catch (e) { void e; } }
     return INITIAL_WEEKLY_SCHEDULE;
   });
 
@@ -183,13 +183,13 @@ export default function App() {
     if (!currentUser?.id) return [];
     const isDemo = ['usr_teacher_1', 'usr_teacher_2', 'usr_teacher_3', 'usr_teacher_4', 'usr_teacher_5', 'usr_inspector_1', 'usr_admin_1'].includes(currentUser.id);
     const saved = localStorage.getItem(`spex_lesson_plans_${currentUser.id}`) || localStorage.getItem('spex_lesson_plans');
-    if (saved) { try { return JSON.parse(saved); } catch(e){} }
+    if (saved) { try { return JSON.parse(saved); } catch (e) { void e; } }
     return isDemo ? INITIAL_LESSON_PLANS : [];
   });
 
   const [knowledgeItems, setKnowledgeItems] = useState<KnowledgeItem[]>(() => {
     const saved = localStorage.getItem('spex_knowledge_items');
-    if (saved) { try { return JSON.parse(saved); } catch(e){} }
+    if (saved) { try { return JSON.parse(saved); } catch (e) { void e; } }
     return INITIAL_KNOWLEDGE_BANK;
   });
 
@@ -197,7 +197,7 @@ export default function App() {
     if (!currentUser?.id) return [];
     const isDemo = ['usr_teacher_1', 'usr_teacher_2', 'usr_teacher_3', 'usr_teacher_4', 'usr_teacher_5', 'usr_inspector_1', 'usr_admin_1'].includes(currentUser.id);
     const saved = localStorage.getItem(`spex_inspector_notes_${currentUser.id}`) || localStorage.getItem('spex_inspector_notes');
-    if (saved) { try { return JSON.parse(saved); } catch(e){} }
+    if (saved) { try { return JSON.parse(saved); } catch (e) { void e; } }
     return isDemo ? INITIAL_INSPECTOR_NOTES : [];
   });
 
@@ -218,13 +218,13 @@ export default function App() {
     if (!currentUser?.id) return [];
     const isDemo = ['usr_teacher_1', 'usr_teacher_2', 'usr_teacher_3', 'usr_teacher_4', 'usr_teacher_5', 'usr_inspector_1', 'usr_admin_1'].includes(currentUser.id);
     const saved = localStorage.getItem(`spex_direct_messages_${currentUser.id}`);
-    if (saved) { try { return JSON.parse(saved); } catch(e){} }
+    if (saved) { try { return JSON.parse(saved); } catch (e) { void e; } }
     return isDemo ? INITIAL_DIRECT_MESSAGES : [];
   });
 
   const [communityResources, setCommunityResources] = useState<CommunityResource[]>(() => {
     const saved = localStorage.getItem('spex_community_resources');
-    if (saved) { try { return JSON.parse(saved); } catch(e){} }
+    if (saved) { try { return JSON.parse(saved); } catch (e) { void e; } }
     return [
       {
         id: 'res_demo_1',
@@ -261,7 +261,7 @@ export default function App() {
 
   const [communityNotifications, setCommunityNotifications] = useState<CommunityNotification[]>(() => {
     const saved = localStorage.getItem('spex_community_notifications');
-    if (saved) { try { return JSON.parse(saved); } catch(e){} }
+    if (saved) { try { return JSON.parse(saved); } catch (e) { void e; } }
     return [
       {
         id: 'notif_1',
@@ -292,12 +292,12 @@ export default function App() {
 
   const [personalLibraryItems, setPersonalLibraryItems] = useState<PersonalLibraryItem[]>(() => {
     const saved = localStorage.getItem('spex_personal_library');
-    if (saved) { try { return JSON.parse(saved); } catch(e){} }
+    if (saved) { try { return JSON.parse(saved); } catch (e) { void e; } }
     return [];
   });
   const [districtGroupMessages, setDistrictGroupMessages] = useState<DistrictGroupMessage[]>(() => {
     const saved = localStorage.getItem('spex_district_group_messages');
-    if (saved) { try { return JSON.parse(saved); } catch(e){} }
+    if (saved) { try { return JSON.parse(saved); } catch (e) { void e; } }
     return INITIAL_DISTRICT_GROUP_MESSAGES;
   });
   const [aiSettings, setAiSettings] = useState<AISetting>(INITIAL_AI_SETTINGS);
@@ -307,7 +307,7 @@ export default function App() {
   const [lessonTimingSettings, setLessonTimingSettings] = useState<LessonSessionTiming>(() => {
     const saved = localStorage.getItem('spex_lesson_timing_settings');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
+      try { return JSON.parse(saved); } catch (e) { void e; }
     }
     return {
       preparationMinutes: 10,
@@ -327,7 +327,7 @@ export default function App() {
   const [activeLessonSession, setActiveLessonSession] = useState<LessonSession | null>(() => {
     const saved = localStorage.getItem('spex_active_lesson_session');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
+      try { return JSON.parse(saved); } catch (e) { void e; }
     }
     return null;
   });
@@ -335,7 +335,7 @@ export default function App() {
   const [lessonExecutionLogs, setLessonExecutionLogs] = useState<LessonExecutionLog[]>(() => {
     const saved = localStorage.getItem('spex_lesson_execution_logs');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
+      try { return JSON.parse(saved); } catch (e) { void e; }
     }
     return [];
   });

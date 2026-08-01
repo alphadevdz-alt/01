@@ -5,22 +5,15 @@
 
 import React, { useState } from 'react';
 import {
-  Calendar,
   Clock,
   Plus,
   Trash2,
   Printer,
-  Sparkles,
   MapPin,
   Users,
-  Layers,
-  BookMarked,
-  CheckCircle2,
-  AlertCircle,
-  Settings,
-  Edit2
+  Settings
 } from 'lucide-react';
-import { WeeklyScheduleSlot, ClassRoom, PEField } from '../../types/spex';
+import { WeeklyScheduleSlot, ClassRoom } from '../../types/spex';
 import { PE_FIELDS } from '../../data/algerianCurriculum';
 
 interface WeeklyScheduleViewProps {

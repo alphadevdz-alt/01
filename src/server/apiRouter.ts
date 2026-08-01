@@ -53,8 +53,8 @@ apiRouter.get('/db/users', async (req, res) => {
   });
 });
 
-async function buildUserWriteData(input: any) {
-  const data: any = { ...input };
+async function buildUserWriteData(input: Record<string, unknown>) {
+  const data: Record<string, unknown> = { ...input };
   delete data.id;
   delete data.passwordHash;
   if (data.password) {
@@ -117,8 +117,8 @@ apiRouter.post('/db/users', async (req, res) => {
     }
 
     const saved = existing
-      ? await prisma.user.update({ where: { id: user.id }, data })
-      : await prisma.user.create({ data: { id: user.id, ...data } });
+      ? await prisma.user.update({ where: { id: user.id }, data: data as any })
+      : await prisma.user.create({ data: { id: user.id, ...data } as any });
 
     await triggerAutoAssignment(saved);
 
@@ -144,9 +144,9 @@ apiRouter.post('/db/users/batch', requireRole('admin'), async (req, res) => {
       const data = await buildUserWriteData(u);
       let saved = null;
       if (existing) {
-        saved = await prisma.user.update({ where: { id: u.id }, data });
+        saved = await prisma.user.update({ where: { id: u.id }, data: data as any });
       } else if (data.passwordHash) {
-        saved = await prisma.user.create({ data: { id: u.id, ...data } });
+        saved = await prisma.user.create({ data: { id: u.id, ...data } as any });
       }
       // مستخدم جديد بدون كلمة مرور ضمن دفعة جماعية يُتجاهل بدل رفض الدفعة كاملة
       if (saved) await triggerAutoAssignment(saved);
@@ -186,25 +186,29 @@ apiRouter.delete('/db/users/:id', requireRole('admin'), async (req, res) => {
 // Helper factory for the simple JSON-blob collections (lessonPlans, notebook, ...)
 // كل سجل يُخزَّن كصف حقيقي في Postgres (id + JSON منظم)، وليس ملف JSON على القرص
 // -----------------------------------------------------------------------
+type DbRecord = Record<string, unknown> & { id: string; data?: unknown };
+
+interface JsonCollectionDelegate {
+  findMany: (args?: unknown) => Promise<DbRecord[]>;
+  findUnique: (args: { where: { id: string } }) => Promise<DbRecord | null>;
+  upsert: (args: unknown) => Promise<DbRecord>;
+  delete: (args: { where: { id: string } }) => Promise<DbRecord>;
+}
+
 function jsonCollectionRoutes(opts: {
   path: string;
-  model: any;
+  model: JsonCollectionDelegate;
   bodyKey: string;
   listKey: string;
   batchBodyKey?: string;
   ownerField?: 'ownerId' | 'authorId' | 'userId' | 'senderId';
-  // فلترة اختيارية لتقييد ما يظهر للمستخدم عند القراءة (خصوصية الكراس اليومي، ملاحظات
-  // التفتيش، الرسائل الخاصة...) — بدونها كان أي مستخدم مسجّل دخول يستطيع قراءة بيانات الجميع
-  visibleTo?: (row: any, user: { id: string; role: string; districtId: string }) => boolean;
-  // افتراضياً: عند الإنشاء، حقل المالك يُفرض دائماً على هوية صاحب الطلب (منع انتحال هوية
-  // كاتب المحتوى). عطّلها فقط عندما يمثّل الحقل طرفاً آخر غير المُرسل (مثل مستلم الإشعار)
+  visibleTo?: (row: DbRecord, user: { id: string; role: string; districtId: string }) => boolean;
   ownerAssignedByServer?: boolean;
 }) {
   const { path, model, bodyKey, listKey, batchBodyKey, ownerField, visibleTo, ownerAssignedByServer = true } = opts;
 
-  // هل يملك المستخدم صلاحية تعديل/حذف سجل موجود مسبقاً؟ (مالكه، أو admin دائماً)
-  function canWrite(existing: any, user: { id: string; role: string }): boolean {
-    if (!existing) return true; // سجل جديد — يُتحقق من صلاحية الإنشاء بشكل منفصل عند الحاجة
+  function canWrite(existing: DbRecord | null, user: { id: string; role: string }): boolean {
+    if (!existing) return true;
     if (user.role === 'admin') return true;
     if (!ownerField) return true;
     return existing[ownerField] === user.id;
@@ -219,8 +223,8 @@ function jsonCollectionRoutes(opts: {
       take: limit,
       skip: offset,
     });
-    const visible = visibleTo ? rows.filter((r: any) => visibleTo(r, req.user!)) : rows;
-    res.json({ success: true, [listKey]: visible.map((r: any) => ({ ...r.data, id: r.id })) });
+    const visible = visibleTo ? rows.filter((r) => visibleTo(r, req.user!)) : rows;
+    res.json({ success: true, [listKey]: visible.map((r) => ({ ...((r.data as Record<string, unknown>) || {}), id: r.id })) });
   });
 
   apiRouter.post(`/db/${path}`, async (req, res) => {
@@ -234,7 +238,7 @@ function jsonCollectionRoutes(opts: {
       return res.status(403).json({ error: 'لا تملك الصلاحية لتعديل هذا العنصر.' });
     }
 
-    const data: any = { data: item };
+    const data: Record<string, unknown> = { data: item };
     // لا يمكن تغيير مالك السجل عند التعديل (منع انتحال الملكية)؛ عند الإنشاء يُنسب دائماً
     // لصاحب الطلب ما لم يكن الحقل يمثّل طرفاً آخر (مثل مستلم الإشعار)
     if (ownerField) {
@@ -245,8 +249,8 @@ function jsonCollectionRoutes(opts: {
 
     await model.upsert({
       where: { id: item.id },
-      create: { id: item.id, ...data },
-      update: data
+      create: { id: item.id, ...data } as unknown,
+      update: data as unknown
     });
     res.json({ success: true, [bodyKey]: item });
   });
@@ -262,7 +266,7 @@ function jsonCollectionRoutes(opts: {
         const existing = await model.findUnique({ where: { id: item.id } });
         if (!canWrite(existing, req.user!)) continue; // تجاهل العناصر التي لا يملك المستخدم صلاحية تعديلها
 
-        const data: any = { data: item };
+        const data: Record<string, unknown> = { data: item };
         if (ownerField) {
           data[ownerField] = existing
             ? existing[ownerField]
@@ -270,8 +274,8 @@ function jsonCollectionRoutes(opts: {
         }
         await model.upsert({
           where: { id: item.id },
-          create: { id: item.id, ...data },
-          update: data
+          create: { id: item.id, ...data } as unknown,
+          update: data as unknown
         });
       }
       res.json({ success: true, count: items.length });
@@ -325,7 +329,7 @@ jsonCollectionRoutes({
   batchBodyKey: 'inspectorNotes',
   ownerField: 'authorId',
   visibleTo: (row, user) =>
-    user.role === 'admin' || row.authorId === user.id || row.data?.teacherId === user.id
+    user.role === 'admin' || row.authorId === user.id || (row.data as Record<string, unknown>)?.teacherId === user.id
 });
 
 // 5. District Group Chat — تُعرض ضمن نطاق مقاطعة المستخدم (districtId) فقط
@@ -336,7 +340,7 @@ jsonCollectionRoutes({
   listKey: 'districtMessages',
   batchBodyKey: 'districtMessages',
   ownerField: 'authorId',
-  visibleTo: (row, user) => user.role === 'admin' || row.data?.districtId === user.districtId
+  visibleTo: (row, user) => user.role === 'admin' || (row.data as Record<string, unknown>)?.districtId === user.districtId
 });
 
 // 6. Direct Messages — خاصة بطرفي المحادثة فقط (المُرسل والمُستقبِل)
@@ -347,7 +351,7 @@ jsonCollectionRoutes({
   listKey: 'directMessages',
   batchBodyKey: 'directMessages',
   ownerField: 'senderId',
-  visibleTo: (row, user) => row.senderId === user.id || row.data?.receiverId === user.id
+  visibleTo: (row, user) => row.senderId === user.id || (row.data as Record<string, unknown>)?.receiverId === user.id
 });
 
 // 7. Community Resources — محتوى عام مشترك، يبقى مرئياً للجميع كما هو مصمَّم
@@ -368,7 +372,7 @@ jsonCollectionRoutes({
   listKey: 'communityNotifications',
   ownerField: 'userId',
   ownerAssignedByServer: false,
-  visibleTo: (row, user) => user.role === 'admin' || row.userId === user.id || row.data?.senderId === user.id
+  visibleTo: (row, user) => user.role === 'admin' || row.userId === user.id || (row.data as Record<string, unknown>)?.senderId === user.id
 });
 
 // -----------------------------------------------------------------------
@@ -380,7 +384,7 @@ apiRouter.post('/ai/test-key', async (req, res) => {
     const customKey = (req.headers['x-custom-api-key'] as string) || req.body.apiKey;
     const result = await testGeminiApiKey(customKey);
     res.json(result);
-  } catch (err: any) {
+  } catch {
     res.status(500).json({ valid: false, message: 'حدث خطأ أثناء الاتصال بالخادم للتحقق من المفتاح.' });
   }
 });
@@ -407,7 +411,7 @@ apiRouter.post('/ai/generate-lesson', async (req, res) => {
     });
 
     res.json({ success: true, data: lessonData });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in /ai/generate-lesson:', error);
     res.status(500).json({ error: 'حدث خطأ أثناء توليد المذكرة، يرجى المحاولة لاحقاً.' });
   }
@@ -419,7 +423,7 @@ apiRouter.post('/ai/suggest-games', async (req, res) => {
     const keyToUse = (req.headers['x-custom-api-key'] as string) || customApiKey;
     const games = await suggestPEGames(fieldName || 'الميدان الجماعي', levelName || 'ابتدائي', keyToUse);
     res.json({ success: true, games });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in /ai/suggest-games:', error);
     res.status(500).json({ error: 'خطأ في اقتراح الألعاب، يرجى المحاولة لاحقاً.' });
   }
@@ -434,7 +438,7 @@ apiRouter.post('/ai/chat', async (req, res) => {
     }
     const responseText = await generateAIChatResponse(message, history || [], keyToUse);
     res.json({ success: true, response: responseText });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in /ai/chat:', error);
     res.status(500).json({ error: 'حدث خطأ أثناء المحادثة، يرجى المحاولة لاحقاً.' });
   }

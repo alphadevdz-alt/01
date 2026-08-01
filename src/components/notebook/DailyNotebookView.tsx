@@ -4,22 +4,24 @@
  */
 
 import React, { useState } from 'react';
-import { BookMarked, CheckCircle2, Clock, AlertCircle, FileText, Sparkles, Calendar, Filter, ArrowUpDown, Trash2 } from 'lucide-react';
+import { BookMarked, Clock, FileText, Sparkles, Calendar, Filter, ArrowUpDown, Trash2 } from 'lucide-react';
 import { DailyNotebookEntry, LessonPlan } from '../../types/spex';
 import { SAMPLE_PE_SESSIONS, PE_FIELDS } from '../../data/algerianCurriculum';
+
+type SessionRefType = { id?: string; sessionTitle?: string; fieldName?: string; levelName?: string };
 
 interface DailyNotebookViewProps {
   notebookEntries: DailyNotebookEntry[];
   lessonPlans: LessonPlan[];
   onUpdateStatus: (entryId: string, status: 'منجزة' | 'مؤجلة' | 'غير منجزة', note?: string) => void;
-  onOpenLessonPlan: (lessonId?: string, sessionRef?: any) => void;
-  onOpenAIGeneratorForSession: (sessionRef: any) => void;
+  onOpenLessonPlan: (lessonId?: string, sessionRef?: SessionRefType) => void;
+  onOpenAIGeneratorForSession: (sessionRef: SessionRefType) => void;
   onDeleteEntry?: (entryId: string) => void;
 }
 
 export const DailyNotebookView: React.FC<DailyNotebookViewProps> = ({
   notebookEntries,
-  lessonPlans,
+  lessonPlans: _lessonPlans,
   onUpdateStatus,
   onOpenLessonPlan,
   onOpenAIGeneratorForSession,

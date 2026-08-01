@@ -9,9 +9,6 @@ import {
   RotateCcw,
   Flag,
   Shuffle,
-  Check,
-  X,
-  Star,
 } from 'lucide-react';
 import { Student, LessonPlan } from '../../../types/spex';
 

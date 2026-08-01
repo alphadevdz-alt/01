@@ -93,7 +93,7 @@ authRouter.post('/register', async (req, res) => {
     setSessionCookie(res, token);
 
     res.json({ success: true, user: sanitizeOwnUser(user) });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Registration error:', err);
     res.status(500).json({ error: 'تعذر إنشاء الحساب، يرجى إعادة المحاولة.' });
   }
@@ -317,8 +317,8 @@ authRouter.post('/bootstrap-admin', async (req, res) => {
     });
 
     res.json({ success: true, message: `تم إنشاء حساب المشرف بنجاح: ${admin.email}` });
-  } catch (err: any) {
-    if (err.code === 'P2002') {
+  } catch (err: unknown) {
+    if (typeof err === 'object' && err !== null && 'code' in err && (err as { code: string }).code === 'P2002') {
       return res.status(409).json({ error: 'البريد الإلكتروني أو اسم المستخدم مستخدم بالفعل.' });
     }
     console.error('Error creating bootstrap admin:', err);

@@ -235,8 +235,8 @@ assignmentRouter.post('/admin/municipalities', async (req, res) => {
     const { name, directorateId } = parsed.data;
     const municipality = await prisma.municipality.create({ data: { name, directorateId } });
     res.json({ success: true, municipality });
-  } catch (err: any) {
-    if (err.code === 'P2002') return res.status(409).json({ error: 'هذه البلدية موجودة بالفعل ضمن هذه المديرية.' });
+  } catch (err: unknown) {
+    if (typeof err === 'object' && err !== null && 'code' in err && (err as { code: string }).code === 'P2002') return res.status(409).json({ error: 'هذه البلدية موجودة بالفعل ضمن هذه المديرية.' });
     res.status(500).json({ error: 'تعذر إنشاء البلدية.' });
   }
 });
@@ -249,8 +249,8 @@ assignmentRouter.post('/admin/schools', async (req, res) => {
     const { name, municipalityId } = parsed.data;
     const school = await prisma.school.create({ data: { name, municipalityId } });
     res.json({ success: true, school });
-  } catch (err: any) {
-    if (err.code === 'P2002') return res.status(409).json({ error: 'هذه المؤسسة موجودة بالفعل ضمن هذه البلدية.' });
+  } catch (err: unknown) {
+    if (typeof err === 'object' && err !== null && 'code' in err && (err as { code: string }).code === 'P2002') return res.status(409).json({ error: 'هذه المؤسسة موجودة بالفعل ضمن هذه البلدية.' });
     res.status(500).json({ error: 'تعذر إنشاء المؤسسة.' });
   }
 });
@@ -269,8 +269,8 @@ assignmentRouter.post('/admin/districts', async (req, res) => {
     // اعتماد مقاطعة جديدة هو أحد نقاط إعادة الاحتساب المذكورة في المواصفة
     await bulkReassignAll();
     res.json({ success: true, district });
-  } catch (err: any) {
-    if (err.code === 'P2002') return res.status(409).json({ error: 'هذه المقاطعة موجودة بالفعل ضمن هذه المديرية.' });
+  } catch (err: unknown) {
+    if (typeof err === 'object' && err !== null && 'code' in err && (err as { code: string }).code === 'P2002') return res.status(409).json({ error: 'هذه المقاطعة موجودة بالفعل ضمن هذه المديرية.' });
     res.status(500).json({ error: 'تعذر إنشاء المقاطعة.' });
   }
 });

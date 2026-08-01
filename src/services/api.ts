@@ -7,9 +7,11 @@
 // Real Authentication — يستبدل المقارنة المحلية لكلمة المرور في المتصفح
 // الجلسة محفوظة في كوكي httpOnly، لذا لا حاجة لتخزين أي رمز يدوياً هنا
 // -----------------------------------------------------------------------
+import { User } from '../types/spex';
+
 export interface AuthResult {
   success: boolean;
-  user?: any;
+  user?: User;
   error?: string;
 }
 
@@ -295,7 +297,7 @@ export async function sendAIChatMessage(message: string, history: { role: 'user'
 
 // Platform DB Auto-Save Sync Helpers
 
-export async function syncUserToDB(user: any): Promise<{ success: boolean; user?: any; error?: string }> {
+export async function syncUserToDB(user: User): Promise<{ success: boolean; user?: User; error?: string }> {
   try {
     const res = await fetch('/api/db/users', {
       method: 'POST',
@@ -322,7 +324,7 @@ export async function deleteUserFromDB(userId: string) {
   }
 }
 
-export async function syncUsersBatchToDB(users: any[]) {
+export async function syncUsersBatchToDB(users: User[]) {
   try {
     await fetch('/api/db/users/batch', {
       method: 'POST',
@@ -344,7 +346,7 @@ export async function fetchUsersFromDB() {
   }
 }
 
-export async function syncLessonPlanToDB(lessonPlan: any) {
+export async function syncLessonPlanToDB(lessonPlan: unknown) {
   try {
     await fetch('/api/db/lesson-plans', {
       method: 'POST',
@@ -356,7 +358,7 @@ export async function syncLessonPlanToDB(lessonPlan: any) {
   }
 }
 
-export async function syncLessonPlansBatchToDB(lessonPlans: any[]) {
+export async function syncLessonPlansBatchToDB(lessonPlans: unknown[]) {
   try {
     await fetch('/api/db/lesson-plans/batch', {
       method: 'POST',
@@ -386,7 +388,7 @@ export async function deleteLessonPlanFromDB(lessonId: string) {
   }
 }
 
-export async function syncNotebookEntryToDB(entry: any) {
+export async function syncNotebookEntryToDB(entry: unknown) {
   try {
     await fetch('/api/db/notebook', {
       method: 'POST',
@@ -398,7 +400,7 @@ export async function syncNotebookEntryToDB(entry: any) {
   }
 }
 
-export async function syncNotebookBatchToDB(dailyNotebook: any[]) {
+export async function syncNotebookBatchToDB(dailyNotebook: unknown[]) {
   try {
     await fetch('/api/db/notebook/batch', {
       method: 'POST',
@@ -418,7 +420,7 @@ export async function deleteNotebookEntryFromDB(entryId: string) {
   }
 }
 
-export async function syncInspectorNoteToDB(note: any) {
+export async function syncInspectorNoteToDB(note: unknown) {
   try {
     await fetch('/api/db/inspector-notes', {
       method: 'POST',
@@ -430,7 +432,7 @@ export async function syncInspectorNoteToDB(note: any) {
   }
 }
 
-export async function syncDistrictMessageToDB(message: any) {
+export async function syncDistrictMessageToDB(message: unknown) {
   try {
     await fetch('/api/db/district-messages', {
       method: 'POST',
@@ -452,7 +454,7 @@ export async function fetchDistrictMessagesFromDB() {
   }
 }
 
-export async function syncDirectMessageToDB(message: any) {
+export async function syncDirectMessageToDB(message: unknown) {
   try {
     await fetch('/api/db/direct-messages', {
       method: 'POST',
@@ -474,7 +476,7 @@ export async function fetchDirectMessagesFromDB() {
   }
 }
 
-export async function syncCommunityResourceToDB(resource: any) {
+export async function syncCommunityResourceToDB(resource: unknown) {
   try {
     await fetch('/api/db/community-resources', {
       method: 'POST',
@@ -496,7 +498,7 @@ export async function fetchCommunityResourcesFromDB() {
   }
 }
 
-export async function syncCommunityNotificationToDB(notification: any) {
+export async function syncCommunityNotificationToDB(notification: unknown) {
   try {
     await fetch('/api/db/community-notifications', {
       method: 'POST',
@@ -541,7 +543,7 @@ async function getJSON(url: string) {
   }
 }
 
-async function postJSON(url: string, body?: any, method: 'POST' | 'PUT' | 'DELETE' = 'POST') {
+async function postJSON(url: string, body?: unknown, method: 'POST' | 'PUT' | 'DELETE' = 'POST') {
   try {
     const res = await fetch(url, {
       method,

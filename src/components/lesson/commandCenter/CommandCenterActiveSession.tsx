@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Play, Pause, SkipForward, CheckCircle2, Clock, Sparkles } from 'lucide-react';
+import { Play, Pause, SkipForward, CheckCircle2, Clock } from 'lucide-react';
 import { LessonSession, LessonSessionTiming } from '../../../types/spex';
 import { playWhistleSound, triggerVibration } from '../../../services/lessonCommandCenter.service';
 
@@ -90,7 +90,7 @@ export const CommandCenterActiveSession: React.FC<CommandCenterActiveSessionProp
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isPaused, currentPhase, remainingSecs, totalElapsedSecs, currentSession.status, timingSettings]);
+  }, [isPaused, currentPhase, remainingSecs, totalElapsedSecs, currentSession.status, timingSettings, finalMins, sit1Mins, sit2Mins, onUpdateSession]);
 
   const formatMinutesSeconds = (secs: number) => {
     const m = Math.floor(Math.max(0, secs) / 60);
