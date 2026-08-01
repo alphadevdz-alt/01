@@ -34,10 +34,10 @@ export const InspectorModals: React.FC<InspectorModalsProps> = ({
   // New Note State
   const [noteTitle, setNoteTitle] = useState('');
   const [noteContent, setNoteContent] = useState('');
-  const [notePriority, setNotePriority] = useState<'منخفضة' | 'متوسطة' | 'عالية'>('متوسطة');
+  const [notePriority, setNotePriority] = useState<'عادية' | 'هام' | 'مستعجل'>('عادية');
 
   // New Visit State
-  const [visitType, setVisitType] = useState<'تفتيشية' | 'توجيهية' | 'استثنائية'>('تفتيشية');
+  const [visitType, setVisitType] = useState<'تفتيش تثبيت' | 'توجيهية' | 'متابعة دورية' | 'تقييمية'>('توجيهية');
   const [visitDate, setVisitDate] = useState(new Date().toISOString().split('T')[0]);
   const [lessonTitle, setLessonTitle] = useState('');
   const [pedagogicalGrade, setPedagogicalGrade] = useState('16.5');
@@ -53,13 +53,17 @@ export const InspectorModals: React.FC<InspectorModalsProps> = ({
     if (!noteTitle.trim() || !noteContent.trim()) return;
     onAddNote({
       id: `note_${Date.now()}`,
+      inspectorId: 'insp_1',
+      inspectorName: 'أحمد المفتش',
+      moduleRef: 'general',
+      status: 'جديدة',
       teacherId: selectedTeacher.id,
       teacherName: `${selectedTeacher.firstName} ${selectedTeacher.lastName}`,
       title: noteTitle.trim(),
       content: noteContent.trim(),
       priority: notePriority,
       createdAt: new Date().toISOString(),
-      read: false,
+      updatedAt: new Date().toISOString(),
     });
     setNoteTitle('');
     setNoteContent('');
@@ -71,6 +75,8 @@ export const InspectorModals: React.FC<InspectorModalsProps> = ({
     if (!lessonTitle.trim()) return;
     onAddVisit({
       id: `v_${Date.now()}`,
+      inspectorId: 'insp_1',
+      institutionId: selectedTeacher.institutionId || 'inst_1',
       teacherId: selectedTeacher.id,
       visitDate,
       visitType,
@@ -78,8 +84,8 @@ export const InspectorModals: React.FC<InspectorModalsProps> = ({
       pedagogicalGrade: parseFloat(pedagogicalGrade) || 16,
       positivePoints: positivesStr.split('،').map((s) => s.trim()).filter(Boolean),
       areasForImprovement: improvementsStr.split('،').map((s) => s.trim()).filter(Boolean),
-      inspectorRecommendations: 'مواصلة الاجتهاد والتطبيق الدقيق للتدرج الوزاري المعتمد.',
-      signedByInspector: true,
+      recommendations: ['مواصلة الاجتهاد والتطبيق الدقيق للتدرج الوزاري المعتمد.'],
+      officialReportGenerated: true,
     });
     setLessonTitle('');
     onCloseVisitModal();
@@ -102,7 +108,7 @@ export const InspectorModals: React.FC<InspectorModalsProps> = ({
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
                 <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
-                  {selectedLessonPlanModal.level}
+                  {selectedLessonPlanModal.levelName || selectedLessonPlanModal.className}
                 </span>
                 <h3 className="text-base font-extrabold text-slate-900 mt-1">
                   {selectedLessonPlanModal.sessionTitle}
@@ -119,23 +125,35 @@ export const InspectorModals: React.FC<InspectorModalsProps> = ({
             <div className="space-y-3 text-xs">
               <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-1">
                 <span className="font-bold text-slate-500 block text-[10px]">الهدف التعلمي للحصة:</span>
-                <p className="font-bold text-slate-900">{selectedLessonPlanModal.learningGoal}</p>
+                <p className="font-bold text-slate-900">{selectedLessonPlanModal.generalObjective}</p>
               </div>
 
               <div className="space-y-2">
                 <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200">
                   <span className="font-extrabold text-amber-900 block mb-1">1. المرحلة التمهيدية / الإحماء (10 دقائق):</span>
-                  <p className="text-slate-800 leading-relaxed">{selectedLessonPlanModal.warmupPhase}</p>
+                  <p className="text-slate-800 leading-relaxed">
+                    {selectedLessonPlanModal.warmupPhase?.generalWarmup ||
+                      selectedLessonPlanModal.warmupPhase?.pedagogicalWarmupGame?.title ||
+                      'الإحماء العام والخاص'}
+                  </p>
                 </div>
 
                 <div className="p-3 bg-blue-50 rounded-2xl border border-blue-200">
                   <span className="font-extrabold text-blue-900 block mb-1">2. المرحلة الرئيسية / التعلم والتطبيق (25 دقيقة):</span>
-                  <p className="text-slate-800 leading-relaxed">{selectedLessonPlanModal.mainPhase}</p>
+                  <p className="text-slate-800 leading-relaxed">
+                    {selectedLessonPlanModal.mainPhase?.learningSituation1?.description ||
+                      selectedLessonPlanModal.mainPhase?.problemSituation ||
+                      'الوضعيات التعلمية الميدانية'}
+                  </p>
                 </div>
 
                 <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-200">
                   <span className="font-extrabold text-emerald-900 block mb-1">3. المرحلة الختامية / التهدئة والتقويم (10 دقائق):</span>
-                  <p className="text-slate-800 leading-relaxed">{selectedLessonPlanModal.coolDownPhase}</p>
+                  <p className="text-slate-800 leading-relaxed">
+                    {selectedLessonPlanModal.coolDownPhase?.assessmentAndDialogue ||
+                      selectedLessonPlanModal.coolDownPhase?.activities ||
+                      'التهدئة والتقويم الختامي'}
+                  </p>
                 </div>
               </div>
 

@@ -32,18 +32,44 @@ export const CommandCenterPreSessionSetup: React.FC<CommandCenterPreSessionSetup
   const selectedPlan = lessonPlans.find((lp) => lp.id === selectedLessonPlanId) || lessonPlans[0];
 
   const handleLaunch = () => {
+    const prepSecs = 10 * 60;
+    const sit1Secs = 20 * 60;
+    const sit2Secs = 20 * 60;
+    const finalSecs = 10 * 60;
+
     onStartSession({
+      teacherId: 't_1',
       classId: selectedClassId || teacherClasses[0]?.id || 'cls_1',
       className: selectedClass?.name || '1 ابتدائي 1',
-      lessonPlanId: selectedLessonPlanId || lessonPlans[0]?.id || 'lp_1',
-      lessonTitle: selectedPlan?.sessionTitle || 'حصة بيداغوجية موجهة',
-      levelName: selectedPlan?.levelName || selectedClass?.levelId || 'السنة الأولى ابتدائي',
+      date: new Date().toISOString().split('T')[0],
       startTime: new Date().toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' }),
-      currentPhase: 'warmup',
-      phaseElapsedTime: 0,
-      totalElapsedTime: 0,
+      endTime: new Date(Date.now() + 60 * 60000).toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' }),
+      sessionTitle: selectedPlan?.sessionTitle || 'حصة بيداغوجية موجهة',
+      lessonPlanId: selectedLessonPlanId || lessonPlans[0]?.id || 'lp_1',
+      educationalObjective: selectedPlan?.generalObjective || 'تطوير المهارات الحركية والتوافق البدني',
+      preparationObjective: selectedPlan?.warmupPhase?.pedagogicalWarmupGame?.title || 'الإحماء العام والخاص وتجهيز التلاميذ بدﻧياً ونفسياً',
+      situation1Title: selectedPlan?.mainPhase?.learningSituation1?.title || 'الوضعية التعلمية الأولى',
+      situation1Description: selectedPlan?.mainPhase?.learningSituation1?.description || 'بناء التعلمات والتطبيق الحركي الفردي والجماعي',
+      situation2Title: selectedPlan?.mainPhase?.learningSituation2?.title || 'الوضعية التعلمية الثانية',
+      situation2Description: selectedPlan?.mainPhase?.learningSituation2?.description || 'المنافسة المصغرة واللعب الموجه وفق القوانين',
+      finalObjective: selectedPlan?.coolDownPhase?.assessmentAndDialogue || 'العودة للهدوء وتفقد العتاد والتقويم الختامي',
+      status: 'in_progress',
+      currentPhase: 'preparation',
+      phaseRemainingSeconds: prepSecs,
+      totalElapsedSeconds: 0,
+      phaseDurations: {
+        preparation: prepSecs,
+        situation1: sit1Secs,
+        situation2: sit2Secs,
+        final: finalSecs
+      },
+      actualPhaseSpent: {
+        preparation: 0,
+        situation1: 0,
+        situation2: 0,
+        final: 0
+      },
       isPaused: false,
-      contingencyMode: contingencyMode as any,
     });
   };
 
@@ -124,7 +150,7 @@ export const CommandCenterPreSessionSetup: React.FC<CommandCenterPreSessionSetup
           <div className="flex items-center justify-between">
             <span className="font-extrabold text-slate-900">{selectedPlan.sessionTitle}</span>
             <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full">
-              {selectedPlan.duration || '45 دقيقة'}
+              {selectedPlan.durationMinutes ? `${selectedPlan.durationMinutes} دقيقة` : '60 دقيقة'}
             </span>
           </div>
           <p className="text-slate-600 leading-relaxed">

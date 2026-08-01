@@ -201,12 +201,16 @@ export interface User {
   specialization?: string;
   cycle?: 'ابتدائي';
   yearsExperience?: number;
+  teachingExperienceYears?: number;
+  wilaya?: string;
   bio?: string;            // النبذة الشخصية
-  status: 'active' | 'inactive';
+  status: 'active' | 'inactive' | 'pending_approval';
   isApprovedByAdmin?: boolean; // تفعيل الحساب من طرف المشرف
   password?: string;
   followingIds?: string[];  // معرّفات المستخدمين المتابَعين
   followersIds?: string[];  // معرّفات المتابعين
+  followingCount?: number;
+  followersCount?: number;
   publishedResourcesCount?: number; // عدد الموارد المنشورة
   approvedResourcesCount?: number;  // عدد الموارد المعتمدة
   privacySettings?: UserPrivacySettings; // إعدادات الخصوصية
@@ -324,6 +328,8 @@ export interface DirectChatMessage {
   receiverName: string;
   districtId: string;
   message: string;
+  content?: string;
+  timestamp?: string;
   createdAt: string;
   read?: boolean;
 }
@@ -503,10 +509,13 @@ export interface AnnualPlanDetail {
 export interface DailyNotebookEntry {
   id: string;
   teacherId: string;
-  sessionId: string;
-  segmentId: string;
+  sessionId?: string;
+  segmentId?: string;
   classId: string;
   className: string;
+  levelName?: string;
+  segmentTitle?: string;
+  sessionTitle?: string;
   executionDate: string;
   timeSlot: string; // e.g. 08:00 - 10:00
   status: 'منجزة' | 'مؤجلة' | 'غير منجزة';
@@ -523,6 +532,7 @@ export interface LessonPlan {
   teacherName: string;     // اسم الأستاذ
   inspectorName?: string;  // اسم الأستاذ المفتش
   levelName: string;       // المستوى الدراسي
+  level?: string;
   className: string;       // اسم القسم
   fieldName: string;       // الميدان التعليمي
   competencyTitle: string; // الكفاءة الختامية للميدان
@@ -533,6 +543,9 @@ export interface LessonPlan {
   sessionGlobalNumber?: number; // رقم الحصة في التوزيع السنوي (1 إلى 30)
   annualSessionRef?: string;   // مرجع الحصة بالتوزيع السنوي (مثل: "الأسبوع 02 / الحصة 02")
   segmentGoal?: string;        // الهدف البيداغوجي / التعلمي للمقطع البيداغوجي
+  learningGoal?: string;
+  evaluation?: string;
+  duration?: string;
   date: string;
   durationMinutes: number; // default 60
   equipmentNeeded: string[]; // الوسائل المستعملة
@@ -629,6 +642,7 @@ export interface ClassRoom {
   teacherId: string;
   levelId: string;
   name: string; // e.g. 1 متوسط 1
+  levelName?: string;
   studentCount: number;
 }
 
@@ -735,6 +749,7 @@ export interface WeeklyScheduleSlot {
   id: string;
   teacherId: string;
   day: 'الأحد' | 'الإثنين' | 'الثلاثاء' | 'الأربعاء' | 'الخميس';
+  dayOfWeek?: string;
   timeSlot: string; // e.g. "08:00 - 09:00", "09:00 - 10:00", "10:00 - 11:00", "11:00 - 12:00", "13:00 - 14:00", "14:00 - 15:00", "15:00 - 16:00"
   classId: string;
   className: string;

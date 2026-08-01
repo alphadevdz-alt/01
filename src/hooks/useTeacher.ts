@@ -21,15 +21,15 @@ export function useTeacher(
   return useMemo(() => {
     const selectedTeacher = teachers.find((t) => t.id === selectedTeacherId) || teachers[0];
 
-    const teacherClasses =
+    const teacherClasses: ClassRoom[] =
       classes.length > 0
         ? classes
         : [
-            { id: 'cls_1', name: '1 ابتدائي 1', studentCount: 28, levelId: 'lvl_p1' },
-            { id: 'cls_2', name: '2 ابتدائي 1', studentCount: 26, levelId: 'lvl_p2' },
-            { id: 'cls_3', name: '3 ابتدائي 1', studentCount: 25, levelId: 'lvl_p3' },
-            { id: 'cls_4', name: '4 ابتدائي 1', studentCount: 24, levelId: 'lvl_p4' },
-            { id: 'cls_5', name: '5 ابتدائي 1', studentCount: 22, levelId: 'lvl_p5' },
+            { id: 'cls_1', name: '1 ابتدائي 1', studentCount: 28, levelId: 'lvl_p1', institutionId: 'inst_1', teacherId: selectedTeacher?.id || 't_1' },
+            { id: 'cls_2', name: '2 ابتدائي 1', studentCount: 26, levelId: 'lvl_p2', institutionId: 'inst_1', teacherId: selectedTeacher?.id || 't_1' },
+            { id: 'cls_3', name: '3 ابتدائي 1', studentCount: 25, levelId: 'lvl_p3', institutionId: 'inst_1', teacherId: selectedTeacher?.id || 't_1' },
+            { id: 'cls_4', name: '4 ابتدائي 1', studentCount: 24, levelId: 'lvl_p4', institutionId: 'inst_1', teacherId: selectedTeacher?.id || 't_1' },
+            { id: 'cls_5', name: '5 ابتدائي 1', studentCount: 22, levelId: 'lvl_p5', institutionId: 'inst_1', teacherId: selectedTeacher?.id || 't_1' },
           ];
 
     const teacherStudents =

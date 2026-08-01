@@ -422,7 +422,9 @@ export const ProfessionalCommunityView: React.FC<ProfessionalCommunityViewProps>
                         <h4 className="text-xs font-black text-slate-900 flex items-center gap-1">
                           <span>{res.authorName}</span>
                           {res.isApprovedByInspector && (
-                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" title="معتمد من التفتيش" />
+                            <span title="معتمد من التفتيش">
+                              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                            </span>
                           )}
                         </h4>
                         <div className="flex items-center gap-2 text-[10px] text-slate-500">

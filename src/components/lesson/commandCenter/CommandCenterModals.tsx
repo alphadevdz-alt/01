@@ -38,62 +38,80 @@ export const CommandCenterModals: React.FC<CommandCenterModalsProps> = ({
             </div>
 
             <div className="space-y-3 text-xs">
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">إجمالي زمن الحصة (دقائق):</label>
-                <input
-                  type="number"
-                  value={timingSettings.totalDurationMinutes}
-                  onChange={(e) =>
-                    onUpdateTimingSettings({
-                      ...timingSettings,
-                      totalDurationMinutes: parseInt(e.target.value) || 45,
-                    })
-                  }
-                  className="w-full p-2.5 border border-slate-200 rounded-xl outline-none font-bold"
-                />
+              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200/80">
+                <span className="font-bold text-slate-700 block mb-0.5">إجمالي زمن الحصة الأصلي:</span>
+                <span className="text-sm font-black text-emerald-700">
+                  {(timingSettings.preparationMinutes || 10) +
+                    (timingSettings.situation1Minutes || 20) +
+                    (timingSettings.situation2Minutes || 20) +
+                    (timingSettings.finalMinutes || 10)}{' '}
+                  دقيقة
+                </span>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1 text-[10px]">الإحماء (د):</label>
+                  <label className="font-bold text-slate-700 block mb-1 text-[11px]">التحضيرية (د):</label>
                   <input
                     type="number"
-                    value={timingSettings.warmupMinutes}
+                    min="1"
+                    max="60"
+                    value={timingSettings.preparationMinutes || 10}
                     onChange={(e) =>
                       onUpdateTimingSettings({
                         ...timingSettings,
-                        warmupMinutes: parseInt(e.target.value) || 10,
+                        preparationMinutes: parseInt(e.target.value) || 10,
                       })
                     }
-                    className="w-full p-2 border border-slate-200 rounded-xl font-bold"
+                    className="w-full p-2 border border-slate-200 rounded-xl font-bold text-slate-900"
                   />
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1 text-[10px]">الرئيسية (د):</label>
+                  <label className="font-bold text-slate-700 block mb-1 text-[11px]">الوضعية 1 (د):</label>
                   <input
                     type="number"
-                    value={timingSettings.mainPhaseMinutes}
+                    min="1"
+                    max="60"
+                    value={timingSettings.situation1Minutes || 20}
                     onChange={(e) =>
                       onUpdateTimingSettings({
                         ...timingSettings,
-                        mainPhaseMinutes: parseInt(e.target.value) || 25,
+                        situation1Minutes: parseInt(e.target.value) || 20,
                       })
                     }
-                    className="w-full p-2 border border-slate-200 rounded-xl font-bold"
+                    className="w-full p-2 border border-slate-200 rounded-xl font-bold text-slate-900"
                   />
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1 text-[10px]">التهدئة (د):</label>
+                  <label className="font-bold text-slate-700 block mb-1 text-[11px]">الوضعية 2 (د):</label>
                   <input
                     type="number"
-                    value={timingSettings.cooldownMinutes}
+                    min="1"
+                    max="60"
+                    value={timingSettings.situation2Minutes || 20}
                     onChange={(e) =>
                       onUpdateTimingSettings({
                         ...timingSettings,
-                        cooldownMinutes: parseInt(e.target.value) || 10,
+                        situation2Minutes: parseInt(e.target.value) || 20,
                       })
                     }
-                    className="w-full p-2 border border-slate-200 rounded-xl font-bold"
+                    className="w-full p-2 border border-slate-200 rounded-xl font-bold text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1 text-[11px]">الختامية (د):</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="60"
+                    value={timingSettings.finalMinutes || 10}
+                    onChange={(e) =>
+                      onUpdateTimingSettings({
+                        ...timingSettings,
+                        finalMinutes: parseInt(e.target.value) || 10,
+                      })
+                    }
+                    className="w-full p-2 border border-slate-200 rounded-xl font-bold text-slate-900"
                   />
                 </div>
               </div>

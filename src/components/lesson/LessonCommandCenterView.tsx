@@ -98,23 +98,23 @@ export const LessonCommandCenterView: React.FC<LessonCommandCenterViewProps> = (
 
   const handleFinishAndSave = () => {
     if (!currentSession) return;
-    const durationMinutes = Math.round((currentSession.totalElapsedTime || 0) / 60) || 45;
+    const durationMinutes = Math.round((currentSession.totalElapsedSeconds || 0) / 60) || 45;
 
     const log: LessonExecutionLog = {
       id: `exec_${Date.now()}`,
       teacherId: currentSession.teacherId || 't_1',
       classId: currentSession.classId,
       className: currentSession.className,
-      lessonPlanTitle: currentSession.lessonTitle,
+      lessonPlanTitle: currentSession.sessionTitle || currentSession.educationalObjective || 'حصة بيداغوجية',
       date: new Date().toISOString().split('T')[0],
       actualStartTime: currentSession.startTime || '08:00',
       actualEndTime: new Date().toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' }),
       totalDurationMinutes: durationMinutes,
       phaseDurations: {
-        preparation: 10,
-        situation1: 15,
-        situation2: 10,
-        final: 10,
+        preparation: Math.round((currentSession.phaseDurations?.preparation || 600) / 60),
+        situation1: Math.round((currentSession.phaseDurations?.situation1 || 1200) / 60),
+        situation2: Math.round((currentSession.phaseDurations?.situation2 || 1200) / 60),
+        final: Math.round((currentSession.phaseDurations?.final || 600) / 60),
       },
       delaysOrOverrunsMinutes: 0,
       completionStatus: 'منجزة في الوقت',
@@ -133,11 +133,11 @@ export const LessonCommandCenterView: React.FC<LessonCommandCenterViewProps> = (
         teacherId: currentSession.teacherId || 't_1',
         classId: currentSession.classId,
         className: currentSession.className,
-        levelName: currentSession.levelName || 'السنة الأولى ابتدائي',
+        levelName: 'التعليم الابتدائي / المتوسط',
         executionDate: new Date().toISOString().split('T')[0],
         timeSlot: '08:00 - 09:00',
         segmentTitle: 'المقطع البيداغوجي المعتمد',
-        sessionTitle: currentSession.lessonTitle,
+        sessionTitle: currentSession.sessionTitle || 'حصة بيداغوجية',
         status: 'منجزة',
         note: `تم الإنجاز الميداني بنجاح بنسبة حضور عالية.`,
       });

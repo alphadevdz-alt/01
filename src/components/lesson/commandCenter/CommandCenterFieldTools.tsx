@@ -120,17 +120,29 @@ export const CommandCenterFieldTools: React.FC<CommandCenterFieldToolsProps> = (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200/80 space-y-1.5">
                 <span className="font-black text-amber-900 block text-xs">1. المرحلة التمهيدية / الإحماء:</span>
-                <p className="text-slate-700 leading-relaxed font-medium">{selectedPlan.warmupPhase}</p>
+                <p className="text-slate-700 leading-relaxed font-medium">
+                  {selectedPlan.warmupPhase?.generalWarmup ||
+                    selectedPlan.warmupPhase?.pedagogicalWarmupGame?.title ||
+                    'الإحماء العام والخاص وتجهيز التلاميذ'}
+                </p>
               </div>
 
               <div className="p-4 bg-blue-50 rounded-2xl border border-blue-200/80 space-y-1.5">
                 <span className="font-black text-blue-900 block text-xs">2. المرحلة الرئيسية / التعلم والتطبيق:</span>
-                <p className="text-slate-700 leading-relaxed font-medium">{selectedPlan.mainPhase}</p>
+                <p className="text-slate-700 leading-relaxed font-medium">
+                  {selectedPlan.mainPhase?.learningSituation1?.description ||
+                    selectedPlan.mainPhase?.problemSituation ||
+                    'الوضعيات التعلمية والتطبيق التنافسي'}
+                </p>
               </div>
 
               <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200/80 space-y-1.5">
                 <span className="font-black text-emerald-900 block text-xs">3. المرحلة الختامية / التهدئة والتقويم:</span>
-                <p className="text-slate-700 leading-relaxed font-medium">{selectedPlan.coolDownPhase}</p>
+                <p className="text-slate-700 leading-relaxed font-medium">
+                  {selectedPlan.coolDownPhase?.assessmentAndDialogue ||
+                    selectedPlan.coolDownPhase?.activities ||
+                    'العودة للهدوء والتقويم التفاعلي'}
+                </p>
               </div>
             </div>
           )}

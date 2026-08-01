@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Play, Pause, SkipForward, RotateCcw, CheckCircle2, Clock } from 'lucide-react';
+import { Play, Pause, SkipForward, CheckCircle2, Clock, Sparkles } from 'lucide-react';
 import { LessonSession, LessonSessionTiming } from '../../../types/spex';
 import { playWhistleSound, triggerVibration } from '../../../services/lessonCommandCenter.service';
 
@@ -16,85 +16,113 @@ export const CommandCenterActiveSession: React.FC<CommandCenterActiveSessionProp
   onUpdateSession,
   onEndSession,
 }) => {
-  const currentPhase = currentSession.currentPhase || 'warmup';
+  const currentPhase: LessonSession['currentPhase'] = currentSession.currentPhase || 'preparation';
   const isPaused = currentSession.isPaused || false;
-  const phaseElapsedTime = currentSession.phaseElapsedTime || 0;
-  const totalElapsedTime = currentSession.totalElapsedTime || 0;
+  
+  // Calculate total session time & phase duration
+  const prepMins = timingSettings.preparationMinutes || 10;
+  const sit1Mins = timingSettings.situation1Minutes || 20;
+  const sit2Mins = timingSettings.situation2Minutes || 20;
+  const finalMins = timingSettings.finalMinutes || 10;
+  const totalMins = prepMins + sit1Mins + sit2Mins + finalMins;
 
-  // Phase max duration calculation
-  const phaseMaxMinutes =
-    currentPhase === 'warmup'
-      ? timingSettings.warmupMinutes || 10
-      : currentPhase === 'main'
-      ? timingSettings.mainPhaseMinutes || 25
-      : timingSettings.cooldownMinutes || 10;
+  const currentPhaseMaxMins =
+    currentPhase === 'preparation'
+      ? prepMins
+      : currentPhase === 'situation1'
+      ? sit1Mins
+      : currentPhase === 'situation2'
+      ? sit2Mins
+      : finalMins;
 
-  const phaseMaxSeconds = phaseMaxMinutes * 60;
-  const remainingPhaseSeconds = Math.max(0, phaseMaxSeconds - phaseElapsedTime);
+  const currentPhaseMaxSecs = currentPhaseMaxMins * 60;
+  const remainingSecs = typeof currentSession.phaseRemainingSeconds === 'number'
+    ? currentSession.phaseRemainingSeconds
+    : currentPhaseMaxSecs;
+  const totalElapsedSecs = currentSession.totalElapsedSeconds || 0;
 
-  // Interval timer for running session
+  // Interval timer for active running session
   useEffect(() => {
-    let interval: any = null;
-    if (!isPaused) {
+    let interval: ReturnType<typeof setInterval> | null = null;
+    if (!isPaused && currentSession.status !== 'completed') {
       interval = setInterval(() => {
-        const nextPhaseElapsed = phaseElapsedTime + 1;
-        const nextTotalElapsed = totalElapsedTime + 1;
+        if (remainingSecs <= 1) {
+          // Play whistle sound on phase change
+          playWhistleSound('long', timingSettings.soundEnabled);
+          triggerVibration(timingSettings.vibrationEnabled);
 
-        if (nextPhaseElapsed >= phaseMaxSeconds) {
           // Auto transition to next phase
-          if (timingSettings.whistleAtPhaseChange) {
-            playWhistleSound('long', timingSettings.soundEnabled);
-            triggerVibration(timingSettings.vibrationEnabled);
-          }
-
-          if (currentPhase === 'warmup') {
+          if (currentPhase === 'preparation') {
             onUpdateSession({
-              currentPhase: 'main',
-              phaseElapsedTime: 0,
-              totalElapsedTime: nextTotalElapsed,
+              currentPhase: 'situation1',
+              phaseRemainingSeconds: sit1Mins * 60,
+              totalElapsedSeconds: totalElapsedSecs + 1,
             });
-          } else if (currentPhase === 'main') {
+          } else if (currentPhase === 'situation1') {
             onUpdateSession({
-              currentPhase: 'cooldown',
-              phaseElapsedTime: 0,
-              totalElapsedTime: nextTotalElapsed,
+              currentPhase: 'situation2',
+              phaseRemainingSeconds: sit2Mins * 60,
+              totalElapsedSeconds: totalElapsedSecs + 1,
+            });
+          } else if (currentPhase === 'situation2') {
+            onUpdateSession({
+              currentPhase: 'final',
+              phaseRemainingSeconds: finalMins * 60,
+              totalElapsedSeconds: totalElapsedSecs + 1,
             });
           } else {
-            // Completed full lesson duration
+            // Reached end of final phase
             onUpdateSession({
-              phaseElapsedTime: nextPhaseElapsed,
-              totalElapsedTime: nextTotalElapsed,
+              phaseRemainingSeconds: 0,
+              totalElapsedSeconds: totalElapsedSecs + 1,
               isPaused: true,
+              status: 'completed',
             });
           }
         } else {
           onUpdateSession({
-            phaseElapsedTime: nextPhaseElapsed,
-            totalElapsedTime: nextTotalElapsed,
+            phaseRemainingSeconds: remainingSecs - 1,
+            totalElapsedSeconds: totalElapsedSecs + 1,
           });
         }
       }, 1000);
     }
-    return () => clearInterval(interval);
-  }, [isPaused, phaseElapsedTime, totalElapsedTime, currentPhase, phaseMaxSeconds]);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isPaused, currentPhase, remainingSecs, totalElapsedSecs, currentSession.status, timingSettings]);
 
   const formatMinutesSeconds = (secs: number) => {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
+    const m = Math.floor(Math.max(0, secs) / 60);
+    const s = Math.max(0, secs) % 60;
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
   const handleNextPhase = () => {
-    if (timingSettings.whistleAtPhaseChange) {
-      playWhistleSound('long', timingSettings.soundEnabled);
-      triggerVibration(timingSettings.vibrationEnabled);
-    }
-    if (currentPhase === 'warmup') {
-      onUpdateSession({ currentPhase: 'main', phaseElapsedTime: 0 });
-    } else if (currentPhase === 'main') {
-      onUpdateSession({ currentPhase: 'cooldown', phaseElapsedTime: 0 });
+    playWhistleSound('long', timingSettings.soundEnabled);
+    triggerVibration(timingSettings.vibrationEnabled);
+
+    if (currentPhase === 'preparation') {
+      onUpdateSession({ currentPhase: 'situation1', phaseRemainingSeconds: sit1Mins * 60 });
+    } else if (currentPhase === 'situation1') {
+      onUpdateSession({ currentPhase: 'situation2', phaseRemainingSeconds: sit2Mins * 60 });
+    } else if (currentPhase === 'situation2') {
+      onUpdateSession({ currentPhase: 'final', phaseRemainingSeconds: finalMins * 60 });
     } else {
       onEndSession();
+    }
+  };
+
+  const getPhaseNameInArabic = (phase: LessonSession['currentPhase']) => {
+    switch (phase) {
+      case 'preparation':
+        return 'المرحلة التحضيرية (الإحماء وتجهيز الصف)';
+      case 'situation1':
+        return 'الوضعية التعلمية الأولى (بناء التعلمات)';
+      case 'situation2':
+        return 'الوضعية التعلمية الثانية (التنافس والتطبيق)';
+      case 'final':
+        return 'المرحلة الختامية (التهدئة والتقويم)';
     }
   };
 
@@ -106,63 +134,77 @@ export const CommandCenterActiveSession: React.FC<CommandCenterActiveSessionProp
           <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
             ● الجلسة الميدانية جارية مع {currentSession.className}
           </span>
-          <h3 className="text-lg font-black text-white mt-1">{currentSession.lessonTitle}</h3>
+          <h3 className="text-lg font-black text-white mt-1">
+            {currentSession.sessionTitle || currentSession.educationalObjective || 'حصة تربية بدنية ورياضية'}
+          </h3>
         </div>
 
         <div className="flex items-center gap-2">
           <span className="text-xs font-bold text-amber-300 bg-amber-500/20 px-3 py-1 rounded-xl border border-amber-500/30">
-            الوقت الإجمالي: {formatMinutesSeconds(totalElapsedTime)} / {timingSettings.totalDurationMinutes}د
+            الوقت المنقضي: {formatMinutesSeconds(totalElapsedSecs)} / {totalMins} دقيقة
           </span>
         </div>
       </div>
 
-      {/* Main Big Phase Display */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-        {/* Warmup Phase Card */}
+      {/* Main 4 Phases Display Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-center">
+        {/* 1. Preparation */}
         <div
-          className={`p-4 rounded-2xl border transition-all ${
-            currentPhase === 'warmup'
-              ? 'bg-amber-500/20 border-amber-500 text-amber-200 shadow-lg scale-105'
-              : 'bg-slate-800/50 border-slate-700/50 text-slate-400 opacity-60'
+          className={`p-3.5 rounded-2xl border transition-all ${
+            currentPhase === 'preparation'
+              ? 'bg-amber-500/25 border-amber-500 text-amber-200 shadow-lg scale-102 ring-2 ring-amber-500/40'
+              : 'bg-slate-800/50 border-slate-700/50 text-slate-400 opacity-70'
           }`}
         >
-          <span className="text-[10px] font-black block">1. التمهيدية / الإحماء</span>
-          <span className="text-sm font-bold block mt-0.5">{timingSettings.warmupMinutes} دقائق</span>
+          <span className="text-[10px] font-black block">1. المرحلة التحضيرية</span>
+          <span className="text-xs font-extrabold block mt-0.5">{prepMins} دقائق</span>
         </div>
 
-        {/* Main Phase Card */}
+        {/* 2. Situation 1 */}
         <div
-          className={`p-4 rounded-2xl border transition-all ${
-            currentPhase === 'main'
-              ? 'bg-blue-500/20 border-blue-500 text-blue-200 shadow-lg scale-105'
-              : 'bg-slate-800/50 border-slate-700/50 text-slate-400 opacity-60'
+          className={`p-3.5 rounded-2xl border transition-all ${
+            currentPhase === 'situation1'
+              ? 'bg-blue-500/25 border-blue-500 text-blue-200 shadow-lg scale-102 ring-2 ring-blue-500/40'
+              : 'bg-slate-800/50 border-slate-700/50 text-slate-400 opacity-70'
           }`}
         >
-          <span className="text-[10px] font-black block">2. الرئيسية / التعلم والتطبيق</span>
-          <span className="text-sm font-bold block mt-0.5">{timingSettings.mainPhaseMinutes} دقيقة</span>
+          <span className="text-[10px] font-black block">2. الوضعية التعلمية 1</span>
+          <span className="text-xs font-extrabold block mt-0.5">{sit1Mins} دقيقة</span>
         </div>
 
-        {/* Cooldown Phase Card */}
+        {/* 3. Situation 2 */}
         <div
-          className={`p-4 rounded-2xl border transition-all ${
-            currentPhase === 'cooldown'
-              ? 'bg-emerald-500/20 border-emerald-500 text-emerald-200 shadow-lg scale-105'
-              : 'bg-slate-800/50 border-slate-700/50 text-slate-400 opacity-60'
+          className={`p-3.5 rounded-2xl border transition-all ${
+            currentPhase === 'situation2'
+              ? 'bg-indigo-500/25 border-indigo-500 text-indigo-200 shadow-lg scale-102 ring-2 ring-indigo-500/40'
+              : 'bg-slate-800/50 border-slate-700/50 text-slate-400 opacity-70'
           }`}
         >
-          <span className="text-[10px] font-black block">3. الختامية / التهدئة والتقويم</span>
-          <span className="text-sm font-bold block mt-0.5">{timingSettings.cooldownMinutes} دقائق</span>
+          <span className="text-[10px] font-black block">3. الوضعية التعلمية 2</span>
+          <span className="text-xs font-extrabold block mt-0.5">{sit2Mins} دقيقة</span>
+        </div>
+
+        {/* 4. Final */}
+        <div
+          className={`p-3.5 rounded-2xl border transition-all ${
+            currentPhase === 'final'
+              ? 'bg-emerald-500/25 border-emerald-500 text-emerald-200 shadow-lg scale-102 ring-2 ring-emerald-500/40'
+              : 'bg-slate-800/50 border-slate-700/50 text-slate-400 opacity-70'
+          }`}
+        >
+          <span className="text-[10px] font-black block">4. المرحلة الختامية</span>
+          <span className="text-xs font-extrabold block mt-0.5">{finalMins} دقائق</span>
         </div>
       </div>
 
       {/* Timer Counter Display */}
-      <div className="bg-slate-950/80 p-6 rounded-3xl border border-slate-800 text-center space-y-2">
-        <div className="text-xs font-bold text-slate-400 flex items-center justify-center gap-1.5">
+      <div className="bg-slate-950/90 p-6 rounded-3xl border border-slate-800 text-center space-y-2">
+        <div className="text-xs font-bold text-slate-300 flex items-center justify-center gap-1.5">
           <Clock className="w-4 h-4 text-emerald-400" />
-          <span>المتبقي في المرحلة الحالية ({currentPhase === 'warmup' ? 'الإحماء' : currentPhase === 'main' ? 'التطبيق الرئيسي' : 'التهدئة'}):</span>
+          <span>المتبقي في {getPhaseNameInArabic(currentPhase)}:</span>
         </div>
         <div className="text-5xl sm:text-6xl font-black text-emerald-400 tracking-wider font-mono dir-ltr">
-          {formatMinutesSeconds(remainingPhaseSeconds)}
+          {formatMinutesSeconds(remainingSecs)}
         </div>
       </div>
 
@@ -199,3 +241,4 @@ export const CommandCenterActiveSession: React.FC<CommandCenterActiveSessionProp
     </div>
   );
 };
+
