@@ -290,7 +290,7 @@ export const CompetencyAssessmentView: React.FC<CompetencyAssessmentViewProps> =
       const createdClass: ClassRoom = {
         id: newId,
         institutionId: 'inst_ainazel_1',
-        teacherId: currentUser?.id || 'usr_teacher_1',
+        teacherId: currentUser?.id || '',
         levelId: newLevelId,
         name: newClassName.trim(),
         studentCount: 0

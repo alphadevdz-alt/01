@@ -1007,39 +1007,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         {dir.districts.map((dist) => (
                           <div
                             key={dist.id}
-                            className={`p-3.5 rounded-xl border transition-all flex items-center justify-between ${
-                              dist.inspectorId === 'usr_inspector_1'
-                                ? 'bg-emerald-600 text-white border-emerald-500 shadow-md ring-2 ring-emerald-400/30'
-                                : 'bg-white border-slate-200 hover:border-emerald-300 text-slate-800'
-                            }`}
+                            className="p-3.5 rounded-xl border transition-all flex items-center justify-between bg-white border-slate-200 hover:border-emerald-300 text-slate-800"
                           >
                             <div className="space-y-0.5">
                               <div className="flex items-center gap-2">
-                                <span
-                                  className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
-                                    dist.inspectorId === 'usr_inspector_1'
-                                      ? 'bg-white/20 text-white'
-                                      : 'bg-emerald-100 text-emerald-800'
-                                  }`}
-                                >
+                                <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800">
                                   المقاطعة {dist.districtNumber ? (dist.districtNumber < 10 ? `0${dist.districtNumber}` : dist.districtNumber) : dist.name}
                                 </span>
-                                {dist.inspectorId === 'usr_inspector_1' && (
-                                  <span className="text-[9px] font-bold bg-amber-400 text-slate-950 px-1.5 py-0.5 rounded-md">
-                                    المفتش المتاح للتجربة
-                                  </span>
-                                )}
                               </div>
                               <div className="text-xs font-bold mt-1">
-                                المفتش: {dist.inspectorName}
+                                المفتش: {dist.inspectorName || 'لم يُحدد بعد'}
                               </div>
                             </div>
 
-                            <UserCheck
-                              className={`w-4 h-4 shrink-0 ${
-                                dist.inspectorId === 'usr_inspector_1' ? 'text-emerald-200' : 'text-slate-400'
-                              }`}
-                            />
+                            <UserCheck className="w-4 h-4 shrink-0 text-slate-400" />
                           </div>
                         ))}
                       </div>

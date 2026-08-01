@@ -118,7 +118,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   onDeleteStudent,
   currentUser
 }) => {
-  const isDemo = currentUser ? ['usr_teacher_1', 'usr_teacher_2', 'usr_teacher_3', 'usr_teacher_4', 'usr_teacher_5', 'usr_inspector_1', 'usr_admin_1'].includes(currentUser.id) : false;
+  const isDemo = currentUser ? currentUser.id === 'usr_admin_1' : false;
 
   const [activeRegister, setActiveRegister] = useState<RegisterTab>('gradebook');
   const [selectedClassId, setSelectedClassId] = useState<string>(classes[0]?.id || '');

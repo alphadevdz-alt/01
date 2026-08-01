@@ -174,7 +174,7 @@ export const LessonCommandCenterView: React.FC<LessonCommandCenterViewProps> = (
           selectedLessonPlanId={selectedLessonPlanId}
           onSelectLessonPlanId={setSelectedLessonPlanId}
           contingencyMode={contingencyMode}
-          onSelectContingencyMode={setContingencyMode}
+          onSelectContingencyMode={(mode) => setContingencyMode(mode as 'normal' | 'hot_weather' | 'equipment_shortage' | 'high_fatigue')}
           onStartSession={onStartSession}
           onNavigateToLessonPlans={onNavigateToLessonPlans}
         />

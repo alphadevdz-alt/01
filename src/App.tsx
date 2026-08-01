@@ -151,7 +151,7 @@ export default function App() {
   // User-scoped Data Initialization & State Management
   const [teacherClasses, setTeacherClasses] = useState<ClassRoom[]>(() => {
     if (!currentUser?.id) return [];
-    const isDemo = ['usr_teacher_1', 'usr_teacher_2', 'usr_teacher_3', 'usr_teacher_4', 'usr_teacher_5', 'usr_inspector_1', 'usr_admin_1'].includes(currentUser.id);
+    const isDemo = currentUser.id === 'usr_admin_1';
     const saved = localStorage.getItem(`spex_teacher_classes_${currentUser.id}`) || localStorage.getItem('spex_teacher_classes');
     if (saved) { try { return JSON.parse(saved); } catch (e) { void e; } }
     return isDemo ? INITIAL_CLASSES : [];
@@ -159,7 +159,7 @@ export default function App() {
 
   const [allStudents, setAllStudents] = useState<Student[]>(() => {
     if (!currentUser?.id) return [];
-    const isDemo = ['usr_teacher_1', 'usr_teacher_2', 'usr_teacher_3', 'usr_teacher_4', 'usr_teacher_5', 'usr_inspector_1', 'usr_admin_1'].includes(currentUser.id);
+    const isDemo = currentUser.id === 'usr_admin_1';
     const saved = localStorage.getItem(`spex_all_students_${currentUser.id}`) || localStorage.getItem('spex_all_students');
     if (saved) { try { return JSON.parse(saved); } catch (e) { void e; } }
     return isDemo ? INITIAL_STUDENTS : [];
@@ -167,7 +167,7 @@ export default function App() {
 
   const [dailyNotebook, setDailyNotebook] = useState<DailyNotebookEntry[]>(() => {
     if (!currentUser?.id) return [];
-    const isDemo = ['usr_teacher_1', 'usr_teacher_2', 'usr_teacher_3', 'usr_teacher_4', 'usr_teacher_5', 'usr_inspector_1', 'usr_admin_1'].includes(currentUser.id);
+    const isDemo = currentUser.id === 'usr_admin_1';
     const saved = localStorage.getItem(`spex_daily_notebook_${currentUser.id}`) || localStorage.getItem('spex_daily_notebook');
     if (saved) { try { return JSON.parse(saved); } catch (e) { void e; } }
     return isDemo ? INITIAL_DAILY_NOTEBOOK : [];
@@ -181,7 +181,7 @@ export default function App() {
 
   const [lessonPlans, setLessonPlans] = useState<LessonPlan[]>(() => {
     if (!currentUser?.id) return [];
-    const isDemo = ['usr_teacher_1', 'usr_teacher_2', 'usr_teacher_3', 'usr_teacher_4', 'usr_teacher_5', 'usr_inspector_1', 'usr_admin_1'].includes(currentUser.id);
+    const isDemo = currentUser.id === 'usr_admin_1';
     const saved = localStorage.getItem(`spex_lesson_plans_${currentUser.id}`) || localStorage.getItem('spex_lesson_plans');
     if (saved) { try { return JSON.parse(saved); } catch (e) { void e; } }
     return isDemo ? INITIAL_LESSON_PLANS : [];
@@ -195,7 +195,7 @@ export default function App() {
 
   const [inspectorNotes, setInspectorNotes] = useState<InspectorNote[]>(() => {
     if (!currentUser?.id) return [];
-    const isDemo = ['usr_teacher_1', 'usr_teacher_2', 'usr_teacher_3', 'usr_teacher_4', 'usr_teacher_5', 'usr_inspector_1', 'usr_admin_1'].includes(currentUser.id);
+    const isDemo = currentUser.id === 'usr_admin_1';
     const saved = localStorage.getItem(`spex_inspector_notes_${currentUser.id}`) || localStorage.getItem('spex_inspector_notes');
     if (saved) { try { return JSON.parse(saved); } catch (e) { void e; } }
     return isDemo ? INITIAL_INSPECTOR_NOTES : [];
@@ -203,20 +203,20 @@ export default function App() {
 
   const [inspectionVisits, setInspectionVisits] = useState<InspectionVisit[]>(() => {
     if (!currentUser?.id) return [];
-    const isDemo = ['usr_teacher_1', 'usr_teacher_2', 'usr_teacher_3', 'usr_teacher_4', 'usr_teacher_5', 'usr_inspector_1', 'usr_admin_1'].includes(currentUser.id);
+    const isDemo = currentUser.id === 'usr_admin_1';
     return isDemo ? INITIAL_INSPECTION_VISITS : [];
   });
 
   const [assessmentSessions, setAssessmentSessions] = useState<CompetencyAssessmentSession[]>(() => {
     if (!currentUser?.id) return [];
-    const isDemo = ['usr_teacher_1', 'usr_teacher_2', 'usr_teacher_3', 'usr_teacher_4', 'usr_teacher_5', 'usr_inspector_1', 'usr_admin_1'].includes(currentUser.id);
+    const isDemo = currentUser.id === 'usr_admin_1';
     return isDemo ? INITIAL_ASSESSMENT_SESSIONS : [];
   });
 
   const [broadcasts, setBroadcasts] = useState(INITIAL_BROADCASTS);
   const [directMessages, setDirectMessages] = useState<DirectChatMessage[]>(() => {
     if (!currentUser?.id) return [];
-    const isDemo = ['usr_teacher_1', 'usr_teacher_2', 'usr_teacher_3', 'usr_teacher_4', 'usr_teacher_5', 'usr_inspector_1', 'usr_admin_1'].includes(currentUser.id);
+    const isDemo = currentUser.id === 'usr_admin_1';
     const saved = localStorage.getItem(`spex_direct_messages_${currentUser.id}`);
     if (saved) { try { return JSON.parse(saved); } catch (e) { void e; } }
     return isDemo ? INITIAL_DIRECT_MESSAGES : [];
@@ -225,69 +225,13 @@ export default function App() {
   const [communityResources, setCommunityResources] = useState<CommunityResource[]>(() => {
     const saved = localStorage.getItem('spex_community_resources');
     if (saved) { try { return JSON.parse(saved); } catch (e) { void e; } }
-    return [
-      {
-        id: 'res_demo_1',
-        spexId: 'SPX-8K31H2',
-        authorName: 'عبد المالك نابتي',
-        authorUsername: '@abdelmalek_nabti',
-        authorRole: 'teacher',
-        authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
-        type: 'game',
-        title: 'لعبة الصياد والأسماك السريعة (تنمية السرعة والتوافق الحركي)',
-        description: 'لعبة تربوية تنافسية موجهة لتلاميذ السنة الأولى والثانية ابتدائية تهدف لتعزيز السرعة والاستجابة للإشارات.',
-        likesCount: 18,
-        savesCount: 12,
-        isApprovedByInspector: true,
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 'res_demo_2',
-        spexId: 'SPX-0I11R5',
-        authorName: 'مصطفى رواق',
-        authorUsername: '@inspector_rewaq',
-        authorRole: 'inspector',
-        authorAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=250',
-        type: 'lesson_plan',
-        title: 'مذكرة نموذجية معتمدة: الجري في مسار مستقيم ومنحنٍ مع التغيير',
-        description: 'مذكرة بيداغوجية مصادق عليها تشتمل على وضعيات مشكلة وإجراءات السلامة للميدان البدني للطور الابتدائي.',
-        likesCount: 35,
-        savesCount: 29,
-        isApprovedByInspector: true,
-        createdAt: new Date().toISOString()
-      }
-    ];
+    return [];
   });
 
   const [communityNotifications, setCommunityNotifications] = useState<CommunityNotification[]>(() => {
     const saved = localStorage.getItem('spex_community_notifications');
     if (saved) { try { return JSON.parse(saved); } catch (e) { void e; } }
-    return [
-      {
-        id: 'notif_1',
-        userId: 'usr_teacher_1',
-        senderId: 'usr_teacher_2',
-        senderUsername: 'issam_boucharaba',
-        senderName: 'عصام بوشرابة',
-        type: 'new_follower',
-        title: 'متابع جديد بالمجتمع المهني',
-        message: 'قام الأستاذ عصام بوشرابة بمتابعة حسابك الشخصي على SPEX.',
-        read: false,
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 'notif_2',
-        userId: 'usr_teacher_1',
-        senderId: 'usr_inspector_1',
-        senderUsername: 'inspector_rewaq',
-        senderName: 'المفتش مصطفى رواق',
-        type: 'resource_approved',
-        title: 'اعتماد مورد بيداغوجي',
-        message: 'تمت المصادقة على لعبتك التربوية المنشورة من طرف مفتشية المقاطعة.',
-        read: false,
-        createdAt: new Date().toISOString()
-      }
-    ];
+    return [];
   });
 
   const [personalLibraryItems, setPersonalLibraryItems] = useState<PersonalLibraryItem[]>(() => {
@@ -622,7 +566,7 @@ export default function App() {
     const newClass: ClassRoom = {
       id: newClassId,
       institutionId: currentUser?.institutionId || 'inst_ainazel_1',
-      teacherId: currentUser?.id || 'usr_teacher_1',
+      teacherId: currentUser?.id || '',
       levelId: newClassData.levelId,
       name: newClassData.name,
       studentCount: 0
@@ -874,8 +818,8 @@ export default function App() {
       id: `note_${Date.now()}`,
       inspectorId: currentUser.id,
       inspectorName: `${currentUser.firstName} ${currentUser.lastName}`,
-      teacherId: notePartial.teacherId || 'usr_teacher_1',
-      teacherName: notePartial.teacherName || 'أحمد بن علي',
+      teacherId: notePartial.teacherId || '',
+      teacherName: notePartial.teacherName || 'أستاذ',
       moduleRef: notePartial.moduleRef || 'general',
       title: notePartial.title || 'توجيه بيداغوجي جديد',
       content: notePartial.content || '',
@@ -892,7 +836,7 @@ export default function App() {
     const visit: InspectionVisit = {
       id: `visit_${Date.now()}`,
       inspectorId: currentUser.id,
-      teacherId: visitPartial.teacherId || 'usr_teacher_1',
+      teacherId: visitPartial.teacherId || '',
       institutionId: visitPartial.institutionId || 'inst_1',
       visitDate: visitPartial.visitDate || new Date().toISOString().split('T')[0],
       visitType: visitPartial.visitType || 'متابعة دورية',
@@ -1161,6 +1105,7 @@ export default function App() {
               teacherName={`${currentUser.firstName} ${currentUser.lastName}`}
               schoolName={currentUser.schoolName || 'المدرسة الابتدائية'}
               teacherClasses={teacherClasses}
+              currentUser={currentUser}
             />
           )}
 
@@ -1185,6 +1130,7 @@ export default function App() {
               onDeleteLessonPlan={handleDeleteLessonPlan}
               onUpdateLessonStatus={handleUpdateLessonStatus}
               onOpenCommandCenterForPlan={handleLaunchCommandCenterForPlan}
+              currentUser={currentUser}
             />
           )}
 

@@ -25,7 +25,7 @@ import {
   Check,
   PenSquare
 } from 'lucide-react';
-import { LessonPlan } from '../../types/spex';
+import { LessonPlan, User } from '../../types/spex';
 import { requestAILessonPlan } from '../../services/api';
 import { COMPLETE_ANNUAL_CURRICULUM } from '../../data/algerianCurriculum';
 
@@ -36,6 +36,7 @@ interface LessonPlanViewProps {
   onDeleteLessonPlan?: (lessonId: string) => void;
   onUpdateLessonStatus?: (lessonId: string, status: 'منجزة' | 'مؤجلة' | 'غير منجزة', note?: string) => void;
   onOpenCommandCenterForPlan?: (plan: LessonPlan) => void;
+  currentUser?: User;
 }
 
 const LEVEL_KEY_MAP: Record<string, string> = {
@@ -58,7 +59,8 @@ export const LessonPlanView: React.FC<LessonPlanViewProps> = ({
   onSaveLessonPlan,
   onDeleteLessonPlan,
   onUpdateLessonStatus,
-  onOpenCommandCenterForPlan
+  onOpenCommandCenterForPlan,
+  currentUser
 }) => {
   const [selectedLessonId, setSelectedLessonId] = useState<string>(
     activeLessonId || lessonPlans[0]?.id || ''
@@ -272,9 +274,9 @@ export const LessonPlanView: React.FC<LessonPlanViewProps> = ({
 
       const newLesson: LessonPlan = {
         id: `lp_ai_${Date.now()}`,
-        teacherId: 'usr_teacher_1',
-        institutionName: 'مدرسة الشهيد بالخيري عبد القادر الابتدائي',
-        teacherName: 'علي بن زايد',
+        teacherId: currentUser?.id || '',
+        institutionName: currentUser?.schoolName || 'المؤسسة التعليمية',
+        teacherName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'أستاذ المادة',
         inspectorName: 'عبد الرحمن سطيفي',
         levelName: genLevel,
         className: '1 ابتدائي 1',

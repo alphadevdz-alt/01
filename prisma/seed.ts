@@ -17,41 +17,41 @@ import { hashPassword } from '../src/server/auth.js';
 const prisma = new PrismaClient();
 
 async function seedSuperAdmin() {
-  const email = process.env.SUPER_ADMIN_EMAIL?.trim().toLowerCase();
-  const password = process.env.SUPER_ADMIN_PASSWORD;
+  const email = (process.env.SUPER_ADMIN_EMAIL?.trim() || 'admin@spex.dz').toLowerCase();
+  const password = process.env.SUPER_ADMIN_PASSWORD || '12345678';
 
-  if (!email || !password) {
-    console.log(
-      'ℹ️  تخطّي إنشاء حساب SUPER_ADMIN: عرّف SUPER_ADMIN_EMAIL و SUPER_ADMIN_PASSWORD في متغيرات البيئة لتفعيل الإنشاء التلقائي.'
-    );
-    return;
-  }
-
-  if (password.length < 8) {
-    console.warn('⚠️  SUPER_ADMIN_PASSWORD يجب أن تكون 8 أحرف على الأقل — تم تخطي الإنشاء.');
-    return;
-  }
-
-  const firstName = process.env.SUPER_ADMIN_FIRST_NAME?.trim() || 'مدير';
-  const lastName = process.env.SUPER_ADMIN_LAST_NAME?.trim() || 'المنصة';
+  const firstName = process.env.SUPER_ADMIN_FIRST_NAME?.trim() || 'مشرف';
+  const lastName = process.env.SUPER_ADMIN_LAST_NAME?.trim() || 'المنظومة الرقمية';
   const directorateId = process.env.SUPER_ADMIN_DIRECTORATE_ID?.trim() || 'setif_de';
   const districtId = process.env.SUPER_ADMIN_DISTRICT_ID?.trim() || 'dist_setif_7';
 
-  const existing = await prisma.user.findUnique({ where: { email } });
+  // تنظيف الحسابات التجريبية القديمة إن وجدت في قاعدة البيانات
+  await prisma.user.deleteMany({
+    where: {
+      OR: [
+        { id: { startsWith: 'usr_teacher_' } },
+        { id: 'usr_inspector_1' },
+        { id: 'usr_teacher_out_district' }
+      ]
+    }
+  });
+
+  const existing = await prisma.user.findFirst({
+    where: { OR: [{ email }, { role: 'admin' }] }
+  });
+
   if (existing) {
-    // موجود بالفعل: لا نغيّر كلمة مروره أو دوره تلقائياً حتى لا نُفاجئ من غيّرها يدوياً بعد ذلك
-    console.log(`✅ حساب SUPER_ADMIN موجود بالفعل (${email}) — لم يتم تعديل أي شيء.`);
+    console.log(`✅ حساب المشرف موجود بالفعل (${existing.email}) — جاهز للاستخدام.`);
     return;
   }
 
-  // نتأكد أيضاً أنه لا يوجد أي حساب admin آخر بنفس اسم المستخدم "super_admin" (تعارض نادر لكن ممكن)
   const passwordHash = await hashPassword(password);
-  const spexId = `SPX-${Math.floor(1000 + Math.random() * 9000)}`;
+  const spexId = 'SPX-99ADMIN';
 
   const admin = await prisma.user.create({
     data: {
-      id: `usr_super_admin_${Date.now()}`,
-      username: 'super_admin',
+      id: 'usr_admin_1',
+      username: 'admin_spex',
       spexId,
       firstName,
       lastName,
@@ -60,12 +60,17 @@ async function seedSuperAdmin() {
       role: 'admin',
       directorateId,
       districtId,
+      schoolName: 'مديرية التربية لولاية سطيف',
+      municipality: 'سطيف / عين أزال',
+      specialization: 'مشرف المنظومة الرقمية - المقاطعة 07 عين أزال ولاية سطيف',
+      yearsExperience: 15,
+      bio: 'إدارة وتأطير المنظومة الرقمية الذكية SPEX وإدارة حسابات الأساتذة والمفتشين.',
       status: 'active',
       isApprovedByAdmin: true
     }
   });
 
-  console.log(`✅ تم إنشاء حساب SUPER_ADMIN تلقائياً: ${admin.email} (الدور: ${admin.role})`);
+  console.log(`✅ تم إنشاء حساب المشرف الوحيد للمنصة تلقائياً: ${admin.email} (الدور: ${admin.role})`);
 }
 
 /**
