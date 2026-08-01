@@ -23,7 +23,9 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
-    "db:seed-from-json": "tsx scripts/migrate-json-to-db.ts"
+    "db:seed-from-json": "tsx scripts/migrate-json-to-db.ts",
+    "render:build": "npm ci && npx prisma generate && npx prisma migrate deploy && npm run build",
+    "render:start": "npm start"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

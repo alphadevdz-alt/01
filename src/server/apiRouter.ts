@@ -4,9 +4,10 @@
  */
 
 import { Router } from 'express';
-import { generatePELessonPlan, suggestPEGames, generateAIChatResponse, testGeminiApiKey } from './aiService.js';
+import { z } from 'zod';
+import { generatePELessonPlan, suggestPEGames, generateAIChatResponse, getConfiguredAIProviders, testConfiguredAIProvider } from './aiService.js';
 import { prisma } from './prismaClient.js';
-import { hashPassword, sanitizeUser, sanitizeOwnUser } from './auth.js';
+import { hashPassword, sanitizeUser, sanitizeOwnUser, encryptApiKey } from './auth.js';
 import { requireAuth, requireRole } from './middleware/requireAuth.js';
 import { reassignTeacher, reassignAllForInspector } from './assignmentService.js';
 
@@ -33,7 +34,7 @@ apiRouter.get('/health', (req, res) => {
     status: 'ok',
     platform: 'SPEX Platform',
     version: '2.0.0',
-    geminiKeyConfigured: Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'MY_GEMINI_API_KEY')
+    aiProvidersConfigured: Boolean(process.env.NVIDIA_API_KEY || process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY || (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'MY_GEMINI_API_KEY'))
   });
 });
 
@@ -53,15 +54,26 @@ apiRouter.get('/db/users', async (req, res) => {
   });
 });
 
-async function buildUserWriteData(input: Record<string, unknown>) {
+async function buildUserWriteData(input: Record<string, unknown>, allowRoleChanges = false) {
   const data: Record<string, unknown> = { ...input };
   delete data.id;
   delete data.passwordHash;
-  if (data.password) {
-    data.passwordHash = await hashPassword(String(data.password));
+  if (!allowRoleChanges) {
+    delete data.role;
+    delete data.status;
+    delete data.isApprovedByAdmin;
   }
+  if (data.password) data.passwordHash = await hashPassword(String(data.password));
   delete data.password;
   if (data.email) data.email = String(data.email).toLowerCase().trim();
+  // API keys are encrypted server-side and never returned to the browser.
+  if (typeof data.customApiKey === 'string') {
+    const raw = data.customApiKey.trim();
+    delete data.customApiKey;
+    data.encryptedApiKey = raw ? encryptApiKey(raw) : null;
+  } else {
+    delete data.customApiKey;
+  }
   return data;
 }
 
@@ -109,7 +121,7 @@ apiRouter.post('/db/users', async (req, res) => {
       }
     }
 
-    const data = await buildUserWriteData(user);
+    const data = await buildUserWriteData(user, isAdmin);
 
     if (!existing && !data.passwordHash) {
       // إنشاء حساب جديد بدون كلمة مرور أولية — نرفض بدل توليد كلمة افتراضية ضعيفة صامتة
@@ -141,7 +153,7 @@ apiRouter.post('/db/users/batch', requireRole('admin'), async (req, res) => {
     for (const u of users) {
       if (!u.id) continue;
       const existing = await prisma.user.findUnique({ where: { id: u.id } });
-      const data = await buildUserWriteData(u);
+      const data = await buildUserWriteData(u, true);
       let saved = null;
       if (existing) {
         saved = await prisma.user.update({ where: { id: u.id }, data: data as any });
@@ -204,8 +216,10 @@ function jsonCollectionRoutes(opts: {
   ownerField?: 'ownerId' | 'authorId' | 'userId' | 'senderId';
   visibleTo?: (row: DbRecord, user: { id: string; role: string; districtId: string }) => boolean;
   ownerAssignedByServer?: boolean;
+  transformCreate?: (item: Record<string, unknown>, user: { id: string; role: string; districtId: string }) => Record<string, unknown>;
+  allowedCreateRoles?: string[];
 }) {
-  const { path, model, bodyKey, listKey, batchBodyKey, ownerField, visibleTo, ownerAssignedByServer = true } = opts;
+  const { path, model, bodyKey, listKey, batchBodyKey, ownerField, visibleTo, ownerAssignedByServer = true, transformCreate, allowedCreateRoles } = opts;
 
   function canWrite(existing: DbRecord | null, user: { id: string; role: string }): boolean {
     if (!existing) return true;
@@ -228,6 +242,9 @@ function jsonCollectionRoutes(opts: {
   });
 
   apiRouter.post(`/db/${path}`, async (req, res) => {
+    if (allowedCreateRoles && !allowedCreateRoles.includes(req.user!.role)) {
+      return res.status(403).json({ error: 'لا تملك الصلاحية لإنشاء هذا النوع من السجلات.' });
+    }
     const item = req.body[bodyKey];
     if (!item || !item.id) {
       return res.status(400).json({ error: 'بيانات غير مكتملة' });
@@ -238,13 +255,17 @@ function jsonCollectionRoutes(opts: {
       return res.status(403).json({ error: 'لا تملك الصلاحية لتعديل هذا العنصر.' });
     }
 
-    const data: Record<string, unknown> = { data: item };
+    const safeItem = transformCreate ? transformCreate({ ...(item as Record<string, unknown>) }, req.user!) : item;
+    const data: Record<string, unknown> = { data: safeItem };
     // لا يمكن تغيير مالك السجل عند التعديل (منع انتحال الملكية)؛ عند الإنشاء يُنسب دائماً
     // لصاحب الطلب ما لم يكن الحقل يمثّل طرفاً آخر (مثل مستلم الإشعار)
     if (ownerField) {
       data[ownerField] = existing
         ? existing[ownerField]
         : (ownerAssignedByServer ? req.user!.id : (item[ownerField] || req.user!.id));
+    }
+    if (path === 'direct-messages' && typeof safeItem.receiverId === 'string') {
+      data.recipientId = safeItem.receiverId;
     }
 
     await model.upsert({
@@ -258,6 +279,9 @@ function jsonCollectionRoutes(opts: {
   if (batchBodyKey) {
     apiRouter.post(`/db/${path}/batch`, async (req, res) => {
       const items = req.body[batchBodyKey];
+      if (allowedCreateRoles && !allowedCreateRoles.includes(req.user!.role)) {
+        return res.status(403).json({ error: 'لا تملك الصلاحية لإنشاء هذا النوع من السجلات.' });
+      }
       if (!Array.isArray(items)) {
         return res.status(400).json({ error: 'قائمة غير صحيحة' });
       }
@@ -266,11 +290,15 @@ function jsonCollectionRoutes(opts: {
         const existing = await model.findUnique({ where: { id: item.id } });
         if (!canWrite(existing, req.user!)) continue; // تجاهل العناصر التي لا يملك المستخدم صلاحية تعديلها
 
-        const data: Record<string, unknown> = { data: item };
+        const safeItem = transformCreate ? transformCreate({ ...(item as Record<string, unknown>) }, req.user!) : item;
+        const data: Record<string, unknown> = { data: safeItem };
         if (ownerField) {
           data[ownerField] = existing
             ? existing[ownerField]
             : (ownerAssignedByServer ? req.user!.id : (item[ownerField] || req.user!.id));
+        }
+        if (path === 'direct-messages' && typeof safeItem.receiverId === 'string') {
+          data.recipientId = safeItem.receiverId;
         }
         await model.upsert({
           where: { id: item.id },
@@ -328,6 +356,7 @@ jsonCollectionRoutes({
   listKey: 'inspectorNotes',
   batchBodyKey: 'inspectorNotes',
   ownerField: 'authorId',
+  allowedCreateRoles: ['admin', 'inspector'],
   visibleTo: (row, user) =>
     user.role === 'admin' || row.authorId === user.id || (row.data as Record<string, unknown>)?.teacherId === user.id
 });
@@ -340,6 +369,7 @@ jsonCollectionRoutes({
   listKey: 'districtMessages',
   batchBodyKey: 'districtMessages',
   ownerField: 'authorId',
+  transformCreate: (item, user) => ({ ...item, districtId: user.districtId }),
   visibleTo: (row, user) => user.role === 'admin' || (row.data as Record<string, unknown>)?.districtId === user.districtId
 });
 
@@ -351,12 +381,19 @@ jsonCollectionRoutes({
   listKey: 'directMessages',
   batchBodyKey: 'directMessages',
   ownerField: 'senderId',
-  ownerAssignedByServer: false,
+  ownerAssignedByServer: true,
+  transformCreate: (item, user) => {
+    const receiverId = typeof item.receiverId === 'string'
+      ? item.receiverId
+      : (typeof item.recipientId === 'string' ? item.recipientId : undefined);
+    const safe = { ...item, senderId: user.id };
+    delete safe.recipientId;
+    return receiverId ? { ...safe, receiverId } : safe;
+  },
   visibleTo: (row, user) =>
     user.role === 'admin' ||
-    user.role === 'inspector' ||
     row.senderId === user.id ||
-    (row.data as Record<string, unknown>)?.receiverId === user.id
+    row.recipientId === user.id
 });
 
 // 7. Community Resources — محتوى عام مشترك، يبقى مرئياً للجميع كما هو مصمَّم
@@ -376,28 +413,178 @@ jsonCollectionRoutes({
   bodyKey: 'notification',
   listKey: 'communityNotifications',
   ownerField: 'userId',
-  ownerAssignedByServer: false,
+  ownerAssignedByServer: true,
+  transformCreate: (item, user) => ({ ...item, senderId: user.id }),
   visibleTo: (row, user) => user.role === 'admin' || row.userId === user.id || (row.data as Record<string, unknown>)?.senderId === user.id
+});
+
+// -----------------------------------------------------------------------
+// 9. المخطط السنوي والتوزيع السنوي — الأستاذ يعدّل صياغة أهدافه الخاصة، والمفتش
+//    يقترح مخططاً/توزيعاً لأساتذة مقاطعته (وفق الإسناد الفعلي في InspectorAssignment)
+//    ثم يعتمد اقتراحه بنفسه ليصبح نافذاً عند الأستاذ.
+// -----------------------------------------------------------------------
+
+async function isInspectorOfTeacher(inspectorId: string, teacherId: string): Promise<boolean> {
+  const assignment = await prisma.inspectorAssignment.findUnique({ where: { teacherId } });
+  return !!assignment && assignment.inspectorId === inspectorId && (assignment.status === 'Active' || assignment.status === 'Changed');
+}
+
+apiRouter.get('/db/annual-plans', async (req, res) => {
+  const { teacherId, kind, academicYearId, levelId } = req.query;
+  const user = req.user!;
+
+  const where: Record<string, unknown> = {};
+  if (kind) where.kind = String(kind);
+  if (academicYearId) where.academicYearId = String(academicYearId);
+  if (levelId) where.levelId = String(levelId);
+
+  if (user.role === 'teacher') {
+    // الأستاذ لا يرى إلا سجلاته الخاصة (بما فيها اقتراحات المفتش الموجّهة له)
+    where.teacherId = user.id;
+  } else if (user.role === 'inspector') {
+    if (teacherId) {
+      if (!(await isInspectorOfTeacher(user.id, String(teacherId)))) {
+        return res.status(403).json({ error: 'هذا الأستاذ ليس ضمن مقاطعتك.' });
+      }
+      where.teacherId = String(teacherId);
+    } else {
+      const assignments = await prisma.inspectorAssignment.findMany({
+        where: { inspectorId: user.id, status: { in: ['Active', 'Changed'] } }
+      });
+      where.teacherId = { in: assignments.map((a) => a.teacherId) };
+    }
+  } else if (user.role === 'admin' && teacherId) {
+    where.teacherId = String(teacherId);
+  }
+
+  const annualPlans = await prisma.annualPlan.findMany({ where: where as any, orderBy: { updatedAt: 'desc' } });
+  res.json({ success: true, annualPlans });
+});
+
+const annualPlanUpsertSchema = z.object({
+  id: z.string().optional(),
+  teacherId: z.string().min(1),
+  academicYearId: z.string().min(1),
+  levelId: z.string().min(1),
+  kind: z.enum(['plan', 'schedule']),
+  data: z.object({
+    overrides: z.record(z.object({ objective: z.string().trim().min(1, 'صياغة الهدف لا يمكن أن تكون فارغة.').max(2000) })),
+    note: z.string().trim().max(1000).optional()
+  })
+});
+
+// حفظ/تعديل مخطط أو توزيع سنوي: الأستاذ لمسودته الخاصة، أو المفتش كاقتراح لأستاذ
+// من مقاطعته (لا يُعتمد تلقائياً — يبقى بحالة "مقترح" إلى أن يعتمده المفتش نفسه)
+apiRouter.post('/db/annual-plans', async (req, res) => {
+  const parsed = annualPlanUpsertSchema.safeParse(req.body.annualPlan);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.errors[0]?.message || 'بيانات غير صحيحة.' });
+  }
+  const { teacherId, academicYearId, levelId, kind, data } = parsed.data;
+  const user = req.user!;
+
+  let status = 'draft';
+  let proposedByInspectorId: string | null = null;
+
+  if (user.role === 'teacher') {
+    if (teacherId !== user.id) {
+      return res.status(403).json({ error: 'لا يمكنك تعديل مخطط أستاذ آخر.' });
+    }
+  } else if (user.role === 'inspector') {
+    if (!(await isInspectorOfTeacher(user.id, teacherId))) {
+      return res.status(403).json({ error: 'هذا الأستاذ ليس ضمن مقاطعتك، لا يمكنك اقتراح مخطط له.' });
+    }
+    status = 'proposed';
+    proposedByInspectorId = user.id;
+  } else if (user.role !== 'admin') {
+    return res.status(403).json({ error: 'لا تملك الصلاحية لهذا الإجراء.' });
+  }
+
+  const existing = await prisma.annualPlan.findUnique({
+    where: { teacherId_academicYearId_levelId_kind: { teacherId, academicYearId, levelId, kind } }
+  });
+
+  // الأستاذ يعدّل مسودته الخاصة فقط؛ إن كان هناك اقتراح من المفتش (معتمد أو قيد الاعتماد)
+  // لا يمكنه الكتابة فوقه مباشرة
+  if (existing && user.role === 'teacher' && existing.status !== 'draft') {
+    return res.status(409).json({ error: 'يوجد اقتراح من المفتش على هذا المخطط، راجعه أولاً قبل التعديل.' });
+  }
+
+  const saved = await prisma.annualPlan.upsert({
+    where: { teacherId_academicYearId_levelId_kind: { teacherId, academicYearId, levelId, kind } },
+    create: {
+      id: parsed.data.id || `ap_${teacherId}_${kind}_${levelId}_${academicYearId}_${Date.now()}`,
+      teacherId,
+      academicYearId,
+      levelId,
+      kind,
+      status,
+      proposedByInspectorId,
+      data
+    },
+    update: {
+      status,
+      proposedByInspectorId,
+      data,
+      ...(status === 'draft' ? { approvedAt: null } : {})
+    }
+  });
+
+  res.json({ success: true, annualPlan: saved });
+});
+
+// اعتماد المفتش لاقتراحه الخاص فيصبح نافذاً عند الأستاذ (لا يمكن لمفتش اعتماد اقتراح مفتش آخر)
+apiRouter.post('/db/annual-plans/:id/approve', requireRole('inspector'), async (req, res) => {
+  const existing = await prisma.annualPlan.findUnique({ where: { id: req.params.id } });
+  if (!existing) return res.status(404).json({ error: 'السجل غير موجود.' });
+  if (existing.proposedByInspectorId !== req.user!.id) {
+    return res.status(403).json({ error: 'لا يمكنك اعتماد اقتراح لم تقدّمه أنت.' });
+  }
+  const saved = await prisma.annualPlan.update({
+    where: { id: existing.id },
+    data: { status: 'approved', approvedAt: new Date() }
+  });
+  res.json({ success: true, annualPlan: saved });
+});
+
+apiRouter.delete('/db/annual-plans/:id', async (req, res) => {
+  try {
+    const existing = await prisma.annualPlan.findUnique({ where: { id: req.params.id } });
+    if (existing) {
+      const user = req.user!;
+      const canDelete = user.role === 'admin' || existing.teacherId === user.id || existing.proposedByInspectorId === user.id;
+      if (!canDelete) return res.status(403).json({ error: 'لا تملك الصلاحية لحذف هذا السجل.' });
+      await prisma.annualPlan.delete({ where: { id: existing.id } });
+    }
+  } catch {
+    // غير موجود مسبقاً
+  }
+  res.json({ success: true });
 });
 
 // -----------------------------------------------------------------------
 // AI Endpoints — تتطلب الآن جلسة صالحة (لم تعد مفتوحة للعموم بدون قيد)
 // -----------------------------------------------------------------------
 
-apiRouter.post('/ai/test-key', async (req, res) => {
+apiRouter.get('/ai/providers', async (_req, res) => {
+  res.json({ success: true, providers: await getConfiguredAIProviders() });
+});
+
+apiRouter.post('/ai/test-provider', async (req, res) => {
   try {
-    const customKey = (req.headers['x-custom-api-key'] as string) || req.body.apiKey;
-    const result = await testGeminiApiKey(customKey);
-    res.json(result);
+    const provider = req.body.provider;
+    if (!['nvidia', 'openai', 'anthropic', 'gemini', 'openai-compatible'].includes(provider)) {
+      return res.status(400).json({ valid: false, message: 'مزود غير معروف.' });
+    }
+    res.json(await testConfiguredAIProvider(provider));
   } catch {
-    res.status(500).json({ valid: false, message: 'حدث خطأ أثناء الاتصال بالخادم للتحقق من المفتاح.' });
+    res.status(500).json({ valid: false, message: 'حدث خطأ أثناء اختبار مزود الذكاء الاصطناعي.' });
   }
 });
 
 apiRouter.post('/ai/generate-lesson', async (req, res) => {
   try {
-    const { levelName, fieldName, competencyTitle, segmentTitle, sessionTitle, sessionType, customObjective, customEquipment, customApiKey } = req.body;
-    const keyToUse = (req.headers['x-custom-api-key'] as string) || customApiKey;
+    const { levelName, fieldName, competencyTitle, segmentTitle, sessionTitle, sessionType, customObjective, customEquipment, preferredProvider, preferredModel } = req.body;
 
     if (!sessionTitle || !fieldName) {
       return res.status(400).json({ error: 'عناصر الحصة والميدان مطلوبة لتوليد المذكرة' });
@@ -412,7 +599,8 @@ apiRouter.post('/ai/generate-lesson', async (req, res) => {
       sessionType,
       customObjective,
       customEquipment,
-      customApiKey: keyToUse
+      preferredProvider,
+      preferredModel
     });
 
     res.json({ success: true, data: lessonData });
@@ -424,9 +612,8 @@ apiRouter.post('/ai/generate-lesson', async (req, res) => {
 
 apiRouter.post('/ai/suggest-games', async (req, res) => {
   try {
-    const { fieldName, levelName, customApiKey } = req.body;
-    const keyToUse = (req.headers['x-custom-api-key'] as string) || customApiKey;
-    const games = await suggestPEGames(fieldName || 'الميدان الجماعي', levelName || 'ابتدائي', keyToUse);
+    const { fieldName, levelName, preferredProvider, preferredModel } = req.body;
+    const games = await suggestPEGames(fieldName || 'الميدان الجماعي', levelName || 'ابتدائي', preferredProvider, preferredModel);
     res.json({ success: true, games });
   } catch (error: unknown) {
     console.error('Error in /ai/suggest-games:', error);
@@ -436,12 +623,11 @@ apiRouter.post('/ai/suggest-games', async (req, res) => {
 
 apiRouter.post('/ai/chat', async (req, res) => {
   try {
-    const { message, history, customApiKey } = req.body;
-    const keyToUse = (req.headers['x-custom-api-key'] as string) || customApiKey;
+    const { message, history, preferredProvider, preferredModel } = req.body;
     if (!message) {
       return res.status(400).json({ error: 'الرسالة مطلوبة' });
     }
-    const responseText = await generateAIChatResponse(message, history || [], keyToUse);
+    const responseText = await generateAIChatResponse(message, history || [], preferredProvider, preferredModel);
     res.json({ success: true, response: responseText });
   } catch (error: unknown) {
     console.error('Error in /ai/chat:', error);

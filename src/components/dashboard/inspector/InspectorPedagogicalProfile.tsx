@@ -23,8 +23,10 @@ import {
   InspectorNote,
 } from '../../../types/spex';
 import { COMPLETE_ANNUAL_CURRICULUM, PE_LEVELS } from '../../../data/algerianCurriculum';
+import { InspectorAnnualPlanProposalCard } from './InspectorAnnualPlanProposalCard';
 
 interface InspectorPedagogicalProfileProps {
+  inspector: User;
   selectedTeacher: User;
   teacherClasses: ClassRoom[];
   totalStudentsTaught: number;
@@ -46,6 +48,7 @@ interface InspectorPedagogicalProfileProps {
 }
 
 export const InspectorPedagogicalProfile: React.FC<InspectorPedagogicalProfileProps> = ({
+  inspector,
   selectedTeacher,
   teacherClasses,
   totalStudentsTaught,
@@ -313,6 +316,12 @@ export const InspectorPedagogicalProfile: React.FC<InspectorPedagogicalProfilePr
                   </div>
                 </div>
               </div>
+
+              <InspectorAnnualPlanProposalCard
+                inspector={inspector}
+                teacher={selectedTeacher}
+                levelId={selectedInspectorLevelId}
+              />
 
               {/* Overall Progress */}
               <div className="bg-gradient-to-r from-emerald-50 to-teal-50 p-4 rounded-2xl border border-emerald-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

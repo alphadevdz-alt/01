@@ -14,21 +14,38 @@ import {
   ArrowLeft,
   CalendarCheck,
   Target,
-  Sparkles
+  Sparkles,
+  Save,
+  Pencil,
+  ShieldCheck,
+  Loader2
 } from 'lucide-react';
 import {
   PE_LEVELS,
   COMPLETE_ANNUAL_CURRICULUM
 } from '../../data/algerianCurriculum';
+import { User } from '../../types/spex';
+import { useAnnualPlanObjectives, objectiveKey } from '../../hooks/useAnnualPlanObjectives';
 
 interface AnnualPlanViewProps {
+  currentUser: User;
   onNavigateToAnnualSchedule?: () => void;
 }
 
 export const AnnualPlanView: React.FC<AnnualPlanViewProps> = ({
+  currentUser,
   onNavigateToAnnualSchedule
 }) => {
   const [selectedLevelId, setSelectedLevelId] = useState<string>('lvl_p1');
+  const {
+    record: objectivesRecord,
+    overrides: objectiveOverrides,
+    setObjective,
+    save: saveObjectives,
+    isSaving: isSavingObjectives,
+    isLockedForTeacher
+  } = useAnnualPlanObjectives({ currentUser, levelId: selectedLevelId, kind: 'plan' });
+  const [isEditingObjectives, setIsEditingObjectives] = useState(false);
 
   const selectedLevel = PE_LEVELS.find((l) => l.id === selectedLevelId) || PE_LEVELS[0];
   const levelCurriculum = COMPLETE_ANNUAL_CURRICULUM[selectedLevelId] || COMPLETE_ANNUAL_CURRICULUM['lvl_p1'];
@@ -69,7 +86,30 @@ export const AnnualPlanView: React.FC<AnnualPlanViewProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 print:hidden">
+          {currentUser.role === 'teacher' && !isLockedForTeacher && (
+            isEditingObjectives ? (
+              <button
+                onClick={async () => {
+                  await saveObjectives();
+                  setIsEditingObjectives(false);
+                }}
+                disabled={isSavingObjectives}
+                className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-2xl shadow-sm transition-all cursor-pointer disabled:opacity-60"
+              >
+                {isSavingObjectives ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                <span>حفظ صياغة الأهداف</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => setIsEditingObjectives(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 text-xs font-bold rounded-2xl shadow-xs transition-all cursor-pointer"
+              >
+                <Pencil className="w-4 h-4 text-blue-600" />
+                <span>تعديل صياغة الأهداف</span>
+              </button>
+            )
+          )}
           <button
             onClick={() => window.print()}
             className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-2xl shadow-sm transition-all cursor-pointer"
@@ -79,6 +119,24 @@ export const AnnualPlanView: React.FC<AnnualPlanViewProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Inspector Proposal Status Banner */}
+      {objectivesRecord && objectivesRecord.status !== 'draft' && (
+        <div
+          className={`rounded-2xl p-4 border flex items-center gap-3 text-xs font-bold print:hidden ${
+            objectivesRecord.status === 'approved'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+              : 'bg-amber-50 border-amber-200 text-amber-900'
+          }`}
+        >
+          <ShieldCheck className="w-5 h-5 shrink-0" />
+          <span>
+            {objectivesRecord.status === 'approved'
+              ? 'تم اعتماد صياغة الأهداف المقترحة من مفتش المقاطعة، وهي المعتمدة حالياً في هذا المخطط.'
+              : 'يوجد اقتراح لصياغة الأهداف من مفتش المقاطعة بانتظار اعتماده.'}
+          </span>
+        </div>
+      )}
 
       {/* Direct Pedagogical Link Banner to Schedule */}
       <div className="bg-gradient-to-r from-teal-900 via-emerald-900 to-slate-900 text-white rounded-3xl p-5 shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-teal-800">
@@ -240,9 +298,18 @@ export const AnnualPlanView: React.FC<AnnualPlanViewProps> = ({
                           {s.typeLabel}
                         </span>
                       </div>
-                      <p className="text-[11px] font-bold leading-tight pt-1">
-                        {s.objective}
-                      </p>
+                      {isEditingObjectives ? (
+                        <textarea
+                          value={objectiveOverrides[objectiveKey(field.fieldId, s.sessionNumber)] ?? s.objective}
+                          onChange={(e) => setObjective(field.fieldId, s.sessionNumber, e.target.value)}
+                          rows={3}
+                          className="w-full px-2 py-1.5 mt-1 bg-white rounded-lg border border-blue-300 text-[11px] font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none resize-y"
+                        />
+                      ) : (
+                        <p className="text-[11px] font-bold leading-tight pt-1">
+                          {objectiveOverrides[objectiveKey(field.fieldId, s.sessionNumber)] ?? s.objective}
+                        </p>
+                      )}
                     </div>
                   ))}
                 </div>

@@ -34,7 +34,6 @@ const registerSchema = z.object({
   lastName: z.string().trim().min(2, 'اللقب يجب أن يكون حرفين على الأقل'),
   email: z.string().trim().email('يرجى إدخال بريد إلكتروني صحيح'),
   password: z.string().min(6, 'كلمة المرور يجب أن تكون 6 أحرف على الأقل'),
-  role: z.enum(['teacher', 'inspector', 'director']).default('teacher'),
   schoolName: z.string().optional(),
   municipality: z.string().optional(),
   phone: z.string().optional()
@@ -46,7 +45,8 @@ authRouter.post('/register', async (req, res) => {
     return res.status(400).json({ error: parsed.error.errors[0]?.message || 'بيانات غير صحيحة.' });
   }
 
-  const { firstName, lastName, email, password, role, schoolName, municipality, phone } = parsed.data;
+  const { firstName, lastName, email, password, schoolName, municipality, phone } = parsed.data;
+  const role = 'teacher';
   const lowerEmail = email.toLowerCase();
 
   const existingUser = await prisma.user.findUnique({ where: { email: lowerEmail } });
@@ -56,7 +56,7 @@ authRouter.post('/register', async (req, res) => {
 
   const passwordHash = await hashPassword(password);
   const spexId = `SPX-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
-  const userId = `usr_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+  const userId = `usr_${crypto.randomUUID()}`;
 
   try {
     const user = await prisma.user.create({
@@ -69,19 +69,14 @@ authRouter.post('/register', async (req, res) => {
         email: lowerEmail,
         passwordHash,
         role,
-        phone: phone || '0661234567',
-        schoolName: schoolName || 'مدرسة ابتدائية',
-        municipality: municipality || 'عين أزال - سطيف',
-        directorateId: 'setif_de',
-        districtId: 'dist_setif_7',
-        institutionId: 'inst_1',
-        specialization:
-          role === 'teacher'
-            ? 'أستاذ التربية البدنية والرياضية - الطور الابتدائي'
-            : role === 'inspector'
-            ? 'مفتش إدارة وابتدائيات للتربية البدنية والرياضية'
-            : 'مدير مدرسة ابتدائية',
-        yearsExperience: 1,
+        phone: phone || null,
+        schoolName: schoolName || null,
+        municipality: municipality || null,
+        directorateId: '',
+        districtId: '',
+        institutionId: null,
+        specialization: 'أستاذ التربية البدنية والرياضية - الطور الابتدائي',
+        yearsExperience: null,
         status: 'pending_approval',
         isApprovedByAdmin: false,
         customApiKey: '',
@@ -117,6 +112,14 @@ authRouter.post('/login', async (req, res) => {
   const validPassword = await verifyPassword(password, user.passwordHash);
   if (!validPassword) {
     return res.status(401).json({ error: genericError });
+  }
+
+  if (user.status !== 'active' || !user.isApprovedByAdmin) {
+    return res.status(403).json({
+      error: 'حسابك قيد انتظار موافقة الإدارة أو غير مفعّل حالياً.',
+      code: 'ACCOUNT_PENDING_APPROVAL',
+      user: sanitizeOwnUser(user)
+    });
   }
 
   const token = signSession({ userId: user.id, role: user.role });
@@ -165,43 +168,22 @@ authRouter.post('/google', async (req, res) => {
     user = await prisma.user.findUnique({ where: { email: profile.email } });
   }
 
-  // إذا لم يكن هناك حساب مسبق، أنشئ حساباً جديداً تلقائياً لمستخدم Google
+  // لا يتم إنشاء حسابات تلقائياً عبر Google. الحساب يجب أن يكون مسجلاً ومقبولاً مسبقاً.
   if (!user) {
-    const spexId = `SPX-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
-    const userId = `usr_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-    const emailPrefix = profile.email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '_');
-    
-    try {
-      user = await prisma.user.create({
-        data: {
-          id: userId,
-          username: `${emailPrefix}_${Math.floor(Math.random() * 1000)}`,
-          spexId,
-          firstName: profile.firstName || 'مستخدم',
-          lastName: profile.lastName || 'جديد',
-          email: profile.email,
-          googleId: profile.googleId,
-          passwordHash: '', // حساب محمي عبر Google مباشرة
-          role: 'teacher',
-          phone: '0661234567',
-          schoolName: 'مدرسة ابتدائية',
-          municipality: 'عين أزال - سطيف',
-          directorateId: 'setif_de',
-          districtId: 'dist_setif_7',
-          institutionId: 'inst_1',
-          specialization: 'أستاذ التربية البدنية والرياضية - الطور الابتدائي',
-          yearsExperience: 1,
-          status: 'active',
-          isApprovedByAdmin: true,
-          customApiKey: '',
-          apiKeyStatus: 'not_set'
-        }
-      });
-    } catch (createErr) {
-      console.error('فشل إنشاء حساب Google جديد:', createErr);
-      return res.status(500).json({ error: 'تعذر إنشاء الحساب عبر Google. يرجى محاولة الدخول العادي أو التواصل مع الدعم.' });
-    }
-  } else if (!user.googleId) {
+    return res.status(403).json({
+      error: 'لا يوجد حساب SPEX مرتبط بهذا البريد الإلكتروني. يرجى إنشاء حساب عبر التسجيل وانتظار موافقة الإدارة.'
+    });
+  }
+
+  if (user.status !== 'active' || !user.isApprovedByAdmin) {
+    return res.status(403).json({
+      error: 'حسابك قيد انتظار موافقة الإدارة أو غير مفعّل حالياً.',
+      code: 'ACCOUNT_PENDING_APPROVAL',
+      user: sanitizeOwnUser(user)
+    });
+  }
+
+  if (!user.googleId) {
     // ربط تلقائي عند أول دخول ناجح عبر Google بنفس البريد الإلكتروني المسجل
     try {
       user = await prisma.user.update({ where: { id: user.id }, data: { googleId: profile.googleId } });

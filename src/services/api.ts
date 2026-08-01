@@ -8,6 +8,7 @@
 // الجلسة محفوظة في كوكي httpOnly، لذا لا حاجة لتخزين أي رمز يدوياً هنا
 // -----------------------------------------------------------------------
 import { User } from '../types/spex';
+import type { AnnualPlan, AnnualPlanKind } from '../types/spex';
 
 export interface AuthResult {
   success: boolean;
@@ -191,20 +192,22 @@ export function setStoredApiKey(key: string) {
   }
 }
 
-export async function testApiKeyOnServer(key: string) {
+export async function testAIProviderOnServer(provider: string) {
   try {
-    const response = await fetch('/api/ai/test-key', {
+    const response = await fetch('/api/ai/test-provider', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-custom-api-key': key.trim()
-      },
-      body: JSON.stringify({ apiKey: key.trim() })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider })
     });
     return await response.json();
-  } catch (err) {
-    return { valid: false, message: 'تعذر الاتصال بالخادم لفحص المفتاح.' };
+  } catch {
+    return { valid: false, message: 'تعذر الاتصال بالخادم لفحص مزود الذكاء الاصطناعي.' };
   }
+}
+
+// Backward-compatible alias for existing settings UI; it now tests the server's default provider.
+export async function testApiKeyOnServer(_key: string) {
+  return testAIProviderOnServer('nvidia');
 }
 
 export interface LessonGeneratorPayload {
@@ -225,15 +228,11 @@ export interface LessonGeneratorPayload {
 }
 
 export async function requestAILessonPlan(payload: LessonGeneratorPayload) {
-  const customApiKey = getStoredApiKey();
   try {
     const response = await fetch('/api/ai/generate-lesson', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(customApiKey ? { 'x-custom-api-key': customApiKey } : {})
-      },
-      body: JSON.stringify({ ...payload, customApiKey })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
     });
 
     if (!response.ok) {
@@ -252,15 +251,11 @@ export async function requestAILessonPlan(payload: LessonGeneratorPayload) {
 }
 
 export async function requestAIGames(fieldName: string, levelName: string) {
-  const customApiKey = getStoredApiKey();
   try {
     const response = await fetch('/api/ai/suggest-games', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(customApiKey ? { 'x-custom-api-key': customApiKey } : {})
-      },
-      body: JSON.stringify({ fieldName, levelName, customApiKey })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fieldName, levelName })
     });
     const json = await response.json();
     return json.games || [];
@@ -278,15 +273,11 @@ export async function requestAIGames(fieldName: string, levelName: string) {
 }
 
 export async function sendAIChatMessage(message: string, history: { role: 'user' | 'model'; text: string }[]) {
-  const customApiKey = getStoredApiKey();
   try {
     const response = await fetch('/api/ai/chat', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(customApiKey ? { 'x-custom-api-key': customApiKey } : {})
-      },
-      body: JSON.stringify({ message, history, customApiKey })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, history })
     });
     const json = await response.json();
     return json.response || 'عذراً، حدث خطأ في معالجة الرسالة.';
@@ -618,6 +609,42 @@ export const fetchAllAssignments = (status?: string) =>
 export const reassignAllTeachers = () => postJSON('/api/admin/assignments/reassign-all');
 export const removeTeacherAssignment = (teacherId: string) => postJSON(`/api/admin/assignments/${teacherId}/remove`);
 export const reassignSingleTeacher = (teacherId: string) => postJSON(`/api/admin/assignments/${teacherId}/reassign`);
+
+// -----------------------------------------------------------------------
+// المخطط السنوي / التوزيع السنوي — تعديل الأستاذ لصياغة الأهداف، واقتراح
+// المفتش لأساتذة مقاطعته مع إمكانية اعتماد اقتراحه
+// -----------------------------------------------------------------------
+
+export const fetchAnnualPlans = (params: {
+  teacherId?: string;
+  kind?: AnnualPlanKind;
+  academicYearId?: string;
+  levelId?: string;
+}) => {
+  const query = new URLSearchParams();
+  if (params.teacherId) query.set('teacherId', params.teacherId);
+  if (params.kind) query.set('kind', params.kind);
+  if (params.academicYearId) query.set('academicYearId', params.academicYearId);
+  if (params.levelId) query.set('levelId', params.levelId);
+  const qs = query.toString();
+  return getJSON(`/api/db/annual-plans${qs ? `?${qs}` : ''}`) as Promise<{ success: boolean; annualPlans?: AnnualPlan[]; error?: string }>;
+};
+
+// الأستاذ يحفظ مسودته الخاصة، أو المفتش يحفظ اقتراحاً لأستاذ من مقاطعته (يبقى
+// بحالة "مقترح" إلى أن يعتمده المفتش بنفسه عبر approveAnnualPlan)
+export const saveAnnualPlan = (payload: {
+  id?: string;
+  teacherId: string;
+  academicYearId: string;
+  levelId: string;
+  kind: AnnualPlanKind;
+  data: { overrides: Record<string, { objective: string }>; note?: string };
+}) => postJSON('/api/db/annual-plans', { annualPlan: payload }) as Promise<{ success: boolean; annualPlan?: AnnualPlan; error?: string }>;
+
+export const approveAnnualPlan = (id: string) =>
+  postJSON(`/api/db/annual-plans/${id}/approve`) as Promise<{ success: boolean; annualPlan?: AnnualPlan; error?: string }>;
+
+export const deleteAnnualPlan = (id: string) => postJSON(`/api/db/annual-plans/${id}`, undefined, 'DELETE');
 
 function fallbackLessonClientGenerator(payload: LessonGeneratorPayload) {
   const customObj = payload.customObjective || `تحقيق هدف المقطع التعليمي لـ (${payload.sessionTitle}) وفق المعايير الرسمية المعتمدة.`;

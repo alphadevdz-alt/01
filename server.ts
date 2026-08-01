@@ -18,15 +18,15 @@ import { requireAuth } from './src/server/middleware/requireAuth.js';
 
 const rootDir = process.cwd();
 
-// Safe database migration on startup if Postgres DATABASE_URL is provided
-if (process.env.DATABASE_URL) {
+// Database migrations are explicit in production. Optional startup migration is opt-in.
+// Seeding is NEVER performed automatically on every server restart.
+if (process.env.DATABASE_URL && process.env.RUN_DB_MIGRATIONS_ON_STARTUP === 'true') {
   try {
-    console.log('⚡ SPEX DB: Running Prisma migrations...');
+    console.log('⚡ SPEX DB: Running Prisma migrations (startup opt-in)...');
     execSync('npx prisma migrate deploy', { stdio: 'inherit' });
-    console.log('🌱 SPEX DB: Seeding initial data...');
-    execSync('npx tsx prisma/seed.ts', { stdio: 'inherit' });
   } catch (err) {
-    console.warn('⚠️ SPEX DB Migration/Seed notice:', (err as Error).message || err);
+    console.error('❌ SPEX DB migration failed:', (err as Error).message || err);
+    process.exit(1);
   }
 }
 
@@ -43,6 +43,16 @@ async function startServer() {
   );
   app.use(cookieParser());
   app.use(express.json({ limit: '2mb' }));
+
+  // Render health check: lightweight and does not require authentication or a DB round-trip.
+  app.get('/health', (_req, res) => {
+    res.status(200).json({
+      ok: true,
+      service: 'spex',
+      environment: process.env.NODE_ENV || 'development',
+      timestamp: new Date().toISOString(),
+    });
+  });
 
   // Rate Limiting
   const loginLimiter = rateLimit({

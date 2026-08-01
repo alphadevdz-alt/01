@@ -15,7 +15,11 @@ import {
   Calendar,
   CheckCircle2,
   Sparkles,
-  Info
+  Info,
+  Save,
+  Pencil,
+  ShieldCheck,
+  Loader2
 } from 'lucide-react';
 import {
   PE_LEVELS,
@@ -24,12 +28,16 @@ import {
   generateAnnualTimeDistribution,
   ScheduledAnnualSession
 } from '../../data/algerianCurriculum';
+import { User } from '../../types/spex';
+import { useAnnualPlanObjectives, objectiveKey } from '../../hooks/useAnnualPlanObjectives';
 
 interface AnnualScheduleViewProps {
+  currentUser: User;
   onNavigateToAnnualPlan?: () => void;
 }
 
 export const AnnualScheduleView: React.FC<AnnualScheduleViewProps> = ({
+  currentUser,
   onNavigateToAnnualPlan
 }) => {
   const [selectedLevelId, setSelectedLevelId] = useState<string>('lvl_p1');
@@ -40,6 +48,17 @@ export const AnnualScheduleView: React.FC<AnnualScheduleViewProps> = ({
 
   const selectedLevel = PE_LEVELS.find((l) => l.id === selectedLevelId) || PE_LEVELS[0];
   const levelCurriculum = COMPLETE_ANNUAL_CURRICULUM[selectedLevelId] || COMPLETE_ANNUAL_CURRICULUM['lvl_p1'];
+
+  // الأهداف التعلمية القابلة للتعديل من طرف الأستاذ (أو المقترحة من المفتش)
+  const {
+    record: objectivesRecord,
+    overrides: objectiveOverrides,
+    setObjective,
+    save: saveObjectives,
+    isSaving: isSavingObjectives,
+    isLockedForTeacher
+  } = useAnnualPlanObjectives({ currentUser, levelId: selectedLevelId, kind: 'schedule' });
+  const [isEditingObjectives, setIsEditingObjectives] = useState(false);
 
   // Calculate dynamic 30-session distribution
   const scheduledSessions = useMemo(() => {
@@ -91,7 +110,30 @@ export const AnnualScheduleView: React.FC<AnnualScheduleViewProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 print:hidden">
+          {currentUser.role === 'teacher' && !isLockedForTeacher && (
+            isEditingObjectives ? (
+              <button
+                onClick={async () => {
+                  await saveObjectives();
+                  setIsEditingObjectives(false);
+                }}
+                disabled={isSavingObjectives}
+                className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-2xl shadow-sm transition-all cursor-pointer disabled:opacity-60"
+              >
+                {isSavingObjectives ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                <span>حفظ صياغة الأهداف</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => setIsEditingObjectives(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 text-xs font-bold rounded-2xl shadow-xs transition-all cursor-pointer"
+              >
+                <Pencil className="w-4 h-4 text-blue-600" />
+                <span>تعديل صياغة الأهداف</span>
+              </button>
+            )
+          )}
           <button
             onClick={() => window.print()}
             className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-2xl shadow-sm transition-all cursor-pointer"
@@ -101,6 +143,24 @@ export const AnnualScheduleView: React.FC<AnnualScheduleViewProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Inspector Proposal Status Banner */}
+      {objectivesRecord && objectivesRecord.status !== 'draft' && (
+        <div
+          className={`rounded-2xl p-4 border flex items-center gap-3 text-xs font-bold print:hidden ${
+            objectivesRecord.status === 'approved'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+              : 'bg-amber-50 border-amber-200 text-amber-900'
+          }`}
+        >
+          <ShieldCheck className="w-5 h-5 shrink-0" />
+          <span>
+            {objectivesRecord.status === 'approved'
+              ? 'تم اعتماد صياغة الأهداف المقترحة من مفتش المقاطعة، وهي المعتمدة حالياً في هذا التوزيع.'
+              : 'يوجد اقتراح لصياغة الأهداف من مفتش المقاطعة بانتظار اعتماده.'}
+          </span>
+        </div>
+      )}
 
       {/* Direct Pedagogical Link Banner */}
       <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white rounded-3xl p-5 shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-blue-800">
@@ -311,8 +371,17 @@ export const AnnualScheduleView: React.FC<AnnualScheduleViewProps> = ({
                     </span>
                   </td>
 
-                  <td className="p-3 font-semibold text-slate-800 leading-relaxed">
-                    {sess.targetObjective}
+                  <td className="p-3 font-semibold text-slate-800 leading-relaxed min-w-[220px]">
+                    {isEditingObjectives ? (
+                      <textarea
+                        value={objectiveOverrides[objectiveKey(sess.fieldId, sess.fieldSessionNumber)] ?? sess.targetObjective}
+                        onChange={(e) => setObjective(sess.fieldId, sess.fieldSessionNumber, e.target.value)}
+                        rows={2}
+                        className="w-full px-2.5 py-2 bg-white rounded-lg border border-blue-300 text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none resize-y"
+                      />
+                    ) : (
+                      objectiveOverrides[objectiveKey(sess.fieldId, sess.fieldSessionNumber)] ?? sess.targetObjective
+                    )}
                   </td>
 
                   <td className="p-3 text-center whitespace-nowrap">

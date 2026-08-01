@@ -1159,11 +1159,11 @@ export default function App() {
           )}
 
           {activeTab === 'annual_plan' && (
-            <AnnualPlanView onNavigateToAnnualSchedule={() => setCurrentTab('annual_schedule')} />
+            <AnnualPlanView currentUser={currentUser} onNavigateToAnnualSchedule={() => setCurrentTab('annual_schedule')} />
           )}
 
           {activeTab === 'annual_schedule' && (
-            <AnnualScheduleView onNavigateToAnnualPlan={() => setCurrentTab('annual_plan')} />
+            <AnnualScheduleView currentUser={currentUser} onNavigateToAnnualPlan={() => setCurrentTab('annual_plan')} />
           )}
 
           {activeTab === 'weekly_schedule' && (

@@ -486,24 +486,32 @@ export interface PESession {
   targetObjective: string;
 }
 
-// Annual Plan
+// Annual Plan (المخطط السنوي) / Annual Schedule (التوزيع السنوي) objective overrides
+// يعدّل الأستاذ صياغة الأهداف التعلمية الخاصة به، ويمكن للمفتش اقتراح مخطط/توزيع
+// سنوي لأساتذة مقاطعته ثم اعتماد اقتراحه ليصبح نافذاً عند الأستاذ.
+export type AnnualPlanKind = 'plan' | 'schedule';
+export type AnnualPlanStatus = 'draft' | 'proposed' | 'approved';
+
+// مفتاح كل هدف هو `${fieldId}__${fieldSessionNumber}` (فريد ضمن المستوى الدراسي)
+export interface AnnualPlanObjectiveOverride {
+  objective: string;
+}
+
 export interface AnnualPlan {
   id: string;
   teacherId: string;
   academicYearId: string;
   levelId: string;
-  status: 'draft' | 'approved' | 'in_progress';
+  kind: AnnualPlanKind;
+  status: AnnualPlanStatus;
+  proposedByInspectorId?: string | null;
+  approvedAt?: string | null;
+  data: {
+    overrides: Record<string, AnnualPlanObjectiveOverride>;
+    note?: string;
+  };
   createdAt: string;
   updatedAt: string;
-  details: AnnualPlanDetail[];
-}
-
-export interface AnnualPlanDetail {
-  id: string;
-  segmentId: string;
-  startWeek: number;
-  endWeek: number;
-  plannedSessionsCount: number;
 }
 
 // Daily Notebook (الكراس اليومي)

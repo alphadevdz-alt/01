@@ -1,29 +1,77 @@
 services:
   - type: web
     name: spex-platform
-    env: node
+    runtime: node
     plan: free
-    buildCommand: npm install && prisma generate && npm run build
-    startCommand: npm start
+    buildCommand: npm run render:build
+    startCommand: npm run render:start
+    healthCheckPath: /health
+    autoDeployTrigger: commit
     envVars:
       - key: NODE_ENV
         value: production
+
+      # Neon PostgreSQL
       - key: DATABASE_URL
         sync: false
-      - key: GEMINI_API_KEY
+      - key: DIRECT_URL
+        sync: false
+
+      # Application
+      - key: APP_URL
         sync: false
       - key: JWT_SECRET
         generateValue: true
+      - key: API_KEY_ENCRYPTION_SECRET
+        generateValue: true
+      - key: SETUP_SECRET
+        generateValue: true
+      - key: RUN_DB_MIGRATIONS_ON_STARTUP
+        value: "false"
+
+      # Email
       - key: RESEND_API_KEY
         sync: false
       - key: EMAIL_FROM
         sync: false
+
+      # Google OAuth
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET
         sync: false
       - key: VITE_GOOGLE_CLIENT_ID
         sync: false
-      - key: APP_URL
-        sync: false
 
+      # AI Gateway
+      - key: NVIDIA_API_KEY
+        sync: false
+      - key: NVIDIA_BASE_URL
+        value: https://integrate.api.nvidia.com/v1
+      - key: NVIDIA_MODEL
+        value: meta/llama-3.1-8b-instruct
+
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_BASE_URL
+        value: https://api.openai.com/v1
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-3-5-haiku-latest
+
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+
+      # Optional OpenAI-compatible provider (OpenRouter, Groq, self-hosted, etc.)
+      - key: AI_COMPATIBLE_API_KEY
+        sync: false
+      - key: AI_COMPATIBLE_BASE_URL
+        sync: false
+      - key: AI_COMPATIBLE_MODEL
+        sync: false

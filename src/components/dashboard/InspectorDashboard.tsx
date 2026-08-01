@@ -215,6 +215,7 @@ export const InspectorDashboard: React.FC<InspectorDashboardProps> = ({
 
           {/* Selected Teacher Full Pedagogical Profile */}
           <InspectorPedagogicalProfile
+            inspector={inspector}
             selectedTeacher={selectedTeacher}
             teacherClasses={teacherClasses}
             totalStudentsTaught={totalStudentsTaught}
